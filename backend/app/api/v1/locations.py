@@ -8,9 +8,144 @@ from app.schemas.locations import (
     LocationListResponse,
     LocationRecord,
     LocationResolveResponse,
+    LocationReverseGeocodeResponse,
 )
 
 router = APIRouter(prefix="/locations", tags=["locations"])
+
+VILLAGE_COVERAGE_STATES = {
+    "maharashtra",
+    "andhra pradesh",
+    "karnataka",
+    "kerala",
+    "tamil nadu",
+    "telangana",
+}
+
+
+@router.get("/reverse-geocode", response_model=ApiResponse[LocationReverseGeocodeResponse])
+async def reverse_geocode(
+    request: Request,
+    latitude: float = Query(..., ge=-90, le=90),
+    longitude: float = Query(..., ge=-180, le=180),
+    repository: LocationRepository = Depends(get_location_repository),
+) -> ApiResponse[LocationReverseGeocodeResponse]:
+    from fastapi import HTTPException
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    if not (6.0 <= latitude <= 38.0 and 68.0 <= longitude <= 98.0):
+        raise HTTPException(
+            status_code=422,
+            detail="Coordinates are outside the supported geographical bounds of India (6°N–38°N, 68°E–98°E).",
+        )
+
+    geocoder = OpenMeteoGeocodingProvider(
+        base_url=request.app.state.settings.geocoding_base_url,
+        timeout_seconds=request.app.state.settings.provider_timeout_seconds,
+    )
+    detected = await geocoder.reverse(latitude, longitude)
+    if not detected or detected.get("outside_india") == "true":
+        raise HTTPException(
+            status_code=422,
+            detail="The detected coordinates are outside India or could not be mapped to an Indian territory.",
+        )
+
+    state_name = detected.get("state_name", "").strip()
+    district_name = detected.get("district_name", "").strip()
+    place_name = detected.get("locality_name") or detected.get("city_name") or district_name or "Local Area"
+
+    snapshot = repository.load()
+    all_records = snapshot.records
+
+    matched_state = None
+    if state_name:
+        for r in all_records:
+            if r.entity_type in {"state", "union_territory"} and (
+                r.name_en.casefold() == state_name.casefold()
+                or state_name.casefold() in r.name_en.casefold()
+                or r.name_en.casefold() in state_name.casefold()
+            ):
+                matched_state = r
+                break
+
+    matched_district = None
+    if matched_state and district_name:
+        for r in all_records:
+            if (
+                r.entity_type == "district"
+                and r.state_code == matched_state.state_code
+                and (
+                    r.name_en.casefold() == district_name.casefold()
+                    or district_name.casefold() in r.name_en.casefold()
+                    or r.name_en.casefold() in district_name.casefold()
+                )
+            ):
+                matched_district = r
+                break
+
+    has_village_coverage = (
+        matched_state is not None
+        and matched_state.name_en.casefold() in VILLAGE_COVERAGE_STATES
+    )
+
+    matched_subdistrict = None
+    matched_village = None
+    if has_village_coverage and matched_district:
+        subdistrict_needle = detected.get("subdistrict_name", "").strip().casefold()
+        if subdistrict_needle:
+            for r in all_records:
+                if (
+                    r.entity_type == "sub-district"
+                    and r.district_code == matched_district.district_code
+                    and (
+                        subdistrict_needle in r.name_en.casefold()
+                        or r.name_en.casefold() in subdistrict_needle
+                    )
+                ):
+                    matched_subdistrict = r
+                    break
+
+        place_needle = place_name.casefold()
+        if place_needle and place_needle != matched_district.name_en.casefold():
+            for r in all_records:
+                if (
+                    r.entity_type in {"city", "town", "village", "panchayat"}
+                    and r.district_code == matched_district.district_code
+                    and (
+                        place_needle in r.name_en.casefold()
+                        or r.name_en.casefold() in place_needle
+                    )
+                ):
+                    matched_village = r
+                    break
+
+    parts = [place_name]
+    if district_name and district_name.casefold() not in place_name.casefold():
+        parts.append(district_name)
+    if state_name and state_name.casefold() not in parts[-1].casefold():
+        parts.append(state_name)
+    formatted_name = ", ".join(parts)
+
+    confidence = "verified" if (matched_state and matched_district) else "approximate"
+
+    res = LocationReverseGeocodeResponse(
+        latitude=latitude,
+        longitude=longitude,
+        state=matched_state,
+        district=matched_district,
+        subdistrict=matched_subdistrict,
+        village=matched_village,
+        state_name=matched_state.name_en if matched_state else state_name,
+        district_name=matched_district.name_en if matched_district else district_name,
+        place_name=place_name,
+        formatted_name=formatted_name,
+        village_coverage_available=has_village_coverage,
+        confidence=confidence,
+        provider="GPS & LGD Reverse Geocoding",
+        retrieved_at=datetime.now(ZoneInfo("Asia/Kolkata")),
+    )
+    return ApiResponse(data=res, request_id=request.state.request_id)
 
 
 def _list_response(

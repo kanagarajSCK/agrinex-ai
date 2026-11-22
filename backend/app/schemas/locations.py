@@ -60,3 +60,20 @@ class LocationResolveResponse(BaseModel):
     provider: str
     retrieved_at: datetime
     confidence: Literal["verified", "ambiguous", "not_resolved"]
+
+
+class LocationReverseGeocodeResponse(BaseModel):
+    latitude: float
+    longitude: float
+    state: LocationRecord | None = None
+    district: LocationRecord | None = None
+    subdistrict: LocationRecord | None = None
+    village: LocationRecord | None = None
+    state_name: str
+    district_name: str
+    place_name: str
+    formatted_name: str
+    village_coverage_available: bool = False
+    confidence: Literal["verified", "ambiguous", "approximate"] = "approximate"
+    provider: str = "reverse-geocoding"
+    retrieved_at: datetime

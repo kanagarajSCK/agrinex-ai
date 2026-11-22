@@ -33,12 +33,13 @@ class UnconfiguredMarketProvider:
 
 class DataGovMarketProvider:
     RESOURCE_ID = "9ef84268-d588-465a-a308-a864a43d0070"
+    DEFAULT_USER_AGENT = "AgriNex-AI/1.0 (Agricultural Intelligence Platform; contact: support@agrinex.ai) Mozilla/5.0"
 
     def __init__(
         self,
         api_key: str,
         base_url: str = "https://api.data.gov.in",
-        timeout_seconds: float = 8.0,
+        timeout_seconds: float = 15.0,
         transport: httpx.AsyncBaseTransport | None = None,
         resource_id: str = RESOURCE_ID,
     ) -> None:
@@ -83,9 +84,11 @@ class DataGovMarketProvider:
                 params["filters[arrival_date]"] = request.arrival_date.strftime("%d/%m/%Y")
 
             try:
+                headers = {"User-Agent": self.DEFAULT_USER_AGENT}
                 async with httpx.AsyncClient(
                     timeout=self._timeout_seconds,
                     transport=self._transport,
+                    headers=headers,
                 ) as client:
                     response = await client.get(
                         f"{self._base_url}/resource/{self._resource_id}",

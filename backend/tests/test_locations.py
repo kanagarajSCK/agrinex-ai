@@ -206,3 +206,55 @@ def test_geocoding_ambiguity_requires_single_match() -> None:
         assert result is None
 
     asyncio.run(scenario())
+
+
+def test_reverse_geocoding_success() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        del request
+        return httpx.Response(200, json={
+            "countryCode": "IN",
+            "countryName": "India",
+            "principalSubdivision": "Tamil Nadu",
+            "city": "Salem",
+            "locality": "Salem",
+            "localityInfo": {
+                "administrative": [
+                    {"name": "India", "description": "country in South Asia"},
+                    {"name": "Tamil Nadu", "description": "state of India"},
+                    {"name": "Salem district", "description": "district of Tamil Nadu state"},
+                    {"name": "Salem West taluk", "description": "taluk of Salem"},
+                ]
+            }
+        })
+
+    async def scenario() -> None:
+        provider = OpenMeteoGeocodingProvider(
+            transport=httpx.MockTransport(handler),
+        )
+        result = await provider.reverse(11.6643, 78.1460)
+        assert result is not None
+        assert result["country"] == "India"
+        assert result["state_name"] == "Tamil Nadu"
+        assert result["district_name"] == "Salem"
+        assert result["subdistrict_name"] == "Salem West"
+
+    asyncio.run(scenario())
+
+
+def test_reverse_geocoding_outside_india() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        del request
+        return httpx.Response(200, json={
+            "countryCode": "GB",
+            "countryName": "United Kingdom",
+        })
+
+    async def scenario() -> None:
+        provider = OpenMeteoGeocodingProvider(
+            transport=httpx.MockTransport(handler),
+        )
+        result = await provider.reverse(51.5074, -0.1278)
+        assert result is not None
+        assert result.get("outside_india") == "true"
+
+    asyncio.run(scenario())

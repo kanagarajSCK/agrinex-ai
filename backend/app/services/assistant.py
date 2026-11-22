@@ -367,6 +367,12 @@ class AssistantService:
         warnings: list[str],
     ) -> AssistantChatResponse:
         if "answer" not in payload:
+            for alt in ("response", "content", "text", "message"):
+                if isinstance(payload.get(alt), str) and payload[alt].strip():
+                    payload["answer"] = payload[alt].strip()
+                    break
+
+        if "answer" not in payload:
             return self._safe_response(
                 language,
                 "I could not produce a valid structured response.",
@@ -377,7 +383,38 @@ class AssistantService:
         payload["language"] = language
         payload["sources"] = [source.model_dump(mode="json") for source in sources]
         payload["data_status"] = data_status
-        payload["warnings"] = list(dict.fromkeys(warnings + payload.get("warnings", [])))
+        raw_warnings = payload.get("warnings")
+        payload_warnings = raw_warnings if isinstance(raw_warnings, list) else []
+        payload["warnings"] = list(dict.fromkeys(warnings + payload_warnings))
+
+        # Normalize intent to valid enum values
+        intent = str(payload.get("intent", "general")).lower()
+        if intent not in {"general", "weather", "mandi", "crop", "safety", "clarification"}:
+            if any(k in intent for k in ("crop", "agri", "soil", "plant", "sow", "pest", "seed")):
+                intent = "crop"
+            elif any(k in intent for k in ("weather", "rain", "climate", "temp")):
+                intent = "weather"
+            elif any(k in intent for k in ("market", "mandi", "price")):
+                intent = "mandi"
+            elif any(k in intent for k in ("safe", "hazard", "warn", "toxic", "precaution")):
+                intent = "safety"
+            elif any(k in intent for k in ("clarif", "question", "ask")):
+                intent = "clarification"
+            else:
+                intent = "general"
+        payload["intent"] = intent
+
+        confidence = str(payload.get("confidence", "medium")).lower()
+        if confidence not in {"low", "medium", "high"}:
+            confidence = "medium"
+        payload["confidence"] = confidence
+
+        payload["needs_clarification"] = bool(payload.get("needs_clarification", False))
+        if not isinstance(payload.get("key_points"), list):
+            payload["key_points"] = []
+        if not isinstance(payload.get("recommendations"), list):
+            payload["recommendations"] = []
+
         try:
             return AssistantChatResponse.model_validate(payload)
         except ValidationError:
@@ -441,12 +478,56 @@ def _extract_json(text: str) -> dict[str, Any] | None:
     cleaned = re.sub(r"\s*```$", "", cleaned)
     try:
         parsed = json.loads(cleaned)
+        if isinstance(parsed, dict):
+            return parsed
     except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
-        if not match:
-            return None
+        pass
+
+    match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
+    if match:
         try:
             parsed = json.loads(match.group(0))
+            if isinstance(parsed, dict):
+                return parsed
         except json.JSONDecodeError:
-            return None
-    return parsed if isinstance(parsed, dict) else None
+            pass
+
+    start = cleaned.find("{")
+    if start != -1:
+        candidate = cleaned[start:]
+        unescaped_quotes = len(re.findall(r'(?<!\\)"', candidate))
+        if unescaped_quotes % 2 != 0:
+            candidate += '"'
+        stack = []
+        in_str = False
+        escape = False
+        for ch in candidate:
+            if escape:
+                escape = False
+                continue
+            if ch == "\\":
+                escape = True
+                continue
+            if ch == '"':
+                in_str = not in_str
+                continue
+            if not in_str:
+                if ch in ("{", "["):
+                    stack.append(ch)
+                elif ch == "}" and stack and stack[-1] == "{":
+                    stack.pop()
+                elif ch == "]" and stack and stack[-1] == "[":
+                    stack.pop()
+        for opener in reversed(stack):
+            if opener == "{":
+                candidate += "}"
+            elif opener == "[":
+                candidate += "]"
+        try:
+            parsed = json.loads(candidate)
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+
+    return None

@@ -17,15 +17,25 @@ export interface PageHeaderProps {
   title: string;
   description: string;
   action?: ReactNode;
+  badge?: ReactNode;
+  demo?: boolean;
 }
 
-export function PageHeader({ eyebrow, title, description, action }: PageHeaderProps) {
+export function PageHeader({
+  eyebrow,
+  title,
+  description,
+  action,
+  badge,
+  demo = false,
+}: PageHeaderProps) {
   return (
     <div className="mb-6 flex flex-col gap-4 sm:mb-7 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
         <div className="mb-2 flex flex-wrap items-center gap-2">
           {eyebrow && <span className="text-[11px] font-bold uppercase tracking-[0.13em] text-[#17834D]">{eyebrow}</span>}
-          <DemoBadge />
+          {badge}
+          {demo && <DemoBadge />}
         </div>
         <h1 className="text-[26px] font-extrabold leading-tight tracking-[-0.035em] text-[#101C18] sm:text-[32px]">{title}</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-[#587064]">{description}</p>

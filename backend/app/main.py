@@ -13,6 +13,7 @@ from app.core.cache import InMemoryTTLCache
 from app.core.config import Settings, get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging, request_id_context
+from app.schemas.common import ApiResponse
 from app.integrations.providers import ProviderSet
 from app.integrations.markets import DataGovMarketProvider
 from app.integrations.gemini import GoogleGeminiProvider
@@ -91,12 +92,10 @@ def create_app(
     )
     try:
         rag_store = ChromaVectorStore(app_settings.rag_store_path)
-    except ModuleNotFoundError as exc:
-        if exc.name != "chromadb":
-            raise
+    except Exception as exc:
         # Core API routes must remain usable when the optional local RAG runtime
         # is unavailable; this empty store never fabricates retrieval evidence.
-        logger.warning("rag.store_unavailable", extra={"reason": "chromadb not installed"})
+        logger.warning("rag.store_unavailable", extra={"reason": str(exc)})
         rag_store = InMemoryVectorStore()
     rag_embedding = GoogleEmbeddingProvider(
         api_key=app_settings.gemini_api_key,
@@ -136,8 +135,8 @@ def create_app(
         CORSMiddleware,
         allow_origins=app_settings.allowed_origins,
         allow_credentials=False,
-        allow_methods=["GET", "POST"],
-        allow_headers=["Content-Type", "X-Request-ID"],
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "X-Request-ID", "Accept"],
         expose_headers=["X-Request-ID"],
     )
 
@@ -155,7 +154,8 @@ def create_app(
         status_code = 500
         try:
             if (
-                request.url.path == f"{app_settings.api_v1_prefix}/assistant/chat"
+                request.method != "OPTIONS"
+                and request.url.path == f"{app_settings.api_v1_prefix}/assistant/chat"
                 and request.headers.get("content-length")
             ):
                 try:
@@ -177,7 +177,7 @@ def create_app(
                         headers={"X-Request-ID": request_id},
                     )
 
-            if request.url.path == f"{app_settings.api_v1_prefix}/assistant/chat":
+            if request.method != "OPTIONS" and request.url.path == f"{app_settings.api_v1_prefix}/assistant/chat":
                 client_key = request.client.host if request.client else "unknown"
                 now = time.monotonic()
                 window = [
@@ -223,6 +223,50 @@ def create_app(
 
     register_exception_handlers(app)
     app.include_router(api_router, prefix=app_settings.api_v1_prefix)
+
+    @app.get(
+        "/",
+        tags=["system"],
+        summary="Service root index",
+        response_model=ApiResponse[dict],
+    )
+    async def root_index(request: Request) -> ApiResponse[dict]:
+        """Return service identity, status, and navigation links."""
+        return ApiResponse(
+            data={
+                "service": app_settings.app_name,
+                "status": "operational",
+                "version": "0.8.0",
+                "environment": app_settings.environment,
+                "message": (
+                    "AgriNex AI API is running. Visit /docs for interactive API documentation, "
+                    "/api/v1 for API endpoints, or http://localhost:3000 for the farmer dashboard."
+                ),
+                "docs_url": "/docs",
+                "openapi_url": f"{app_settings.api_v1_prefix}/openapi.json",
+                "health_check": f"{app_settings.api_v1_prefix}/health",
+                "frontend_url": "http://localhost:3000",
+            },
+            request_id=request.state.request_id,
+        )
+
+    @app.get(
+        "/health",
+        tags=["system"],
+        summary="Root health check alias",
+        response_model=ApiResponse[dict],
+    )
+    async def root_health_alias(request: Request) -> ApiResponse[dict]:
+        """Root health check alias pointing to /api/v1/health."""
+        return ApiResponse(
+            data={"status": "ok", "service": "agrinex-api"},
+            request_id=request.state.request_id,
+        )
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon() -> Response:
+        return Response(status_code=204)
+
     return app
 
 

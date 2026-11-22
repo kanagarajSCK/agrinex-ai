@@ -85,9 +85,13 @@ class InMemoryVectorStore:
 class ChromaVectorStore:
     def __init__(self, persist_directory: str) -> None:
         from chromadb import PersistentClient
+        from chromadb.config import Settings as ChromaSettings
 
         Path(persist_directory).mkdir(parents=True, exist_ok=True)
-        self._client = PersistentClient(path=persist_directory)
+        self._client = PersistentClient(
+            path=persist_directory,
+            settings=ChromaSettings(anonymized_telemetry=False),
+        )
         self._collection = self._client.get_or_create_collection(
             name="agrinex_knowledge",
             metadata={"hnsw:space": "cosine"},

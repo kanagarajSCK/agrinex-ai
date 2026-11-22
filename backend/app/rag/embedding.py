@@ -47,14 +47,27 @@ class GoogleEmbeddingProvider:
             from google import genai
             from google.genai import types
 
-            client = genai.Client(api_key=self._api_key)
+            client = genai.Client(
+                api_key=self._api_key,
+                http_options=types.HttpOptions(
+                    api_version="v1beta",
+                    timeout=int(self._timeout_seconds * 1000),
+                ),
+            )
+            try:
+                config = types.EmbedContentConfig(
+                    task_type=task_type,
+                    output_dimensionality=self._dimensions,
+                )
+            except Exception:
+                config = types.EmbedContentConfig(
+                    taskType=task_type,
+                    outputDimensionality=self._dimensions,
+                )
             response = client.models.embed_content(
                 model=self._model,
                 contents=text,
-                config=types.EmbedContentConfig(
-                    taskType=task_type,
-                    outputDimensionality=self._dimensions,
-                ),
+                config=config,
             )
             embeddings = getattr(response, "embeddings", None)
             if not embeddings:

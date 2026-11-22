@@ -105,6 +105,7 @@ def test_openapi_exposes_versioned_operations() -> None:
     assert "/api/v1/knowledge/retrieve" in paths
     assert "/api/v1/locations/states" in paths
     assert "/api/v1/locations/districts" in paths
+    assert "/api/v1/locations/reverse-geocode" in paths
 
 
 class SlowWeatherProvider:

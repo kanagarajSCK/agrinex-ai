@@ -15,6 +15,7 @@ import {
   type MarketSummary,
   type MarketSearchResponse,
 } from "@/lib/markets";
+import { useLocation } from "@/contexts/location-context";
 
 function asNumber(value: number | string | null | undefined) {
   if (value == null) return null;
@@ -23,31 +24,45 @@ function asNumber(value: number | string | null | undefined) {
 }
 
 export function MarketsPage() {
-  const [state, setState] = useState("Tamil Nadu");
-  const [district, setDistrict] = useState("Salem");
+  const { location, openOnboarding } = useLocation();
+
+  const [state, setState] = useState(() => location?.state || "Tamil Nadu");
+  const [district, setDistrict] = useState(() => location?.district || "Salem");
   const [market, setMarket] = useState("All");
   const [commodity, setCommodity] = useState("Tomato");
   const [search, setSearch] = useState("Tomato");
   const [variety, setVariety] = useState("All");
   const [grade, setGrade] = useState("All");
   const [commodities, setCommodities] = useState<string[]>(["Tomato"]);
-  const [districts, setDistricts] = useState<string[]>(["Salem"]);
+  const [districts, setDistricts] = useState<string[]>([]);
   const [markets, setMarkets] = useState<string[]>([]);
   const [data, setData] = useState<MarketSearchResponse | null>(null);
   const [summary, setSummary] = useState<MarketSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function load(nextCommodity = commodity) {
+  // Sync state & district whenever location changes in context
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      if (location?.state && location.state !== state) {
+        setState(location.state);
+      }
+      if (location?.district && location.district !== district) {
+        setDistrict(location.district);
+      }
+    });
+  }, [location?.state, location?.district, state, district]);
+
+  async function load(nextCommodity = commodity, nextState = state, nextDistrict = district) {
     setLoading(true);
     setError("");
     try {
       const [geographies, commodityList, prices] = await Promise.all([
-        fetchGeographies(state),
-        fetchCommodities(state),
+        fetchGeographies(nextState),
+        fetchCommodities(nextState),
         fetchMarketPrices({
-          state,
-          district,
+          state: nextState,
+          district: nextDistrict,
           market,
           commodity: nextCommodity,
           variety,
@@ -62,8 +77,8 @@ export function MarketsPage() {
 
       if (nextCommodity && prices.record_count) {
         const summaryResponse = await fetchMarketSummary({
-          state,
-          district,
+          state: nextState,
+          district: nextDistrict,
           market,
           commodity: nextCommodity,
           variety,
@@ -82,11 +97,11 @@ export function MarketsPage() {
     }
   }
 
+  // Reload when state or district change
   useEffect(() => {
-    void Promise.resolve().then(() => load("Tomato"));
-    // Initial load intentionally uses the default Tamil Nadu/Salem filters.
+    void Promise.resolve().then(() => load(commodity, state, district));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [state, district]);
 
   const varieties = useMemo(
     () => Array.from(new Set((data?.prices ?? []).map((record) => record.variety).filter((value): value is string => Boolean(value)))).sort(),
@@ -108,7 +123,7 @@ export function MarketsPage() {
     const nextCommodity = search.trim();
     if (!nextCommodity) return;
     setCommodity(nextCommodity);
-    void load(nextCommodity);
+    void load(nextCommodity, state, district);
   }
 
   return (
@@ -116,19 +131,51 @@ export function MarketsPage() {
       <PageHeader
         eyebrow="Market intelligence"
         title="Compare mandi prices"
-        description="Genuine AGMARKNET / data.gov.in records. A configured API key is required; no estimated or sample market prices are shown."
+        description={`Genuine AGMARKNET / data.gov.in records for ${district || state}. A configured API key is required; no estimated or sample market prices are shown.`}
         action={
-          <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#dfe8e2] bg-white px-3.5 text-sm font-semibold text-[#42604e] disabled:opacity-60">
-            <RefreshCw aria-hidden="true" className={`size-4 ${loading ? "animate-spin" : ""}`} /> Refresh
-          </button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <button
+              type="button"
+              onClick={() => openOnboarding()}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#dfe8e2] bg-white px-3.5 text-sm font-semibold text-[#42604e] hover:bg-[#f8faf8]"
+            >
+              <MapPin aria-hidden="true" className="size-4 text-[#17834D]" /> Change Location
+            </button>
+            <button
+              type="button"
+              onClick={() => void load()}
+              disabled={loading}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#17834D] px-3.5 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              <RefreshCw aria-hidden="true" className={`size-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+            </button>
+          </div>
         }
       />
 
       <Card className="mb-5 p-4 sm:p-5">
-        <div className="mb-3 flex items-center gap-2"><h2 className="text-sm font-bold text-[#183b2b]">Search and filter</h2></div>
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-[#183b2b]">Search and filter</h2>
+            <span className="text-xs text-[#75887c]">({district ? `${district}, ${state}` : state})</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => openOnboarding()}
+            className="text-xs font-semibold text-[#17834D] hover:underline"
+          >
+            Use my confirmed location →
+          </button>
+        </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           <div className="md:col-span-2">
-            <SearchInput value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") applySearch(); }} placeholder="Search commodity" aria-label="Search commodity" />
+            <SearchInput
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Enter") applySearch(); }}
+              placeholder="Search commodity (e.g. Tomato, Onion)"
+              aria-label="Search commodity"
+            />
           </div>
           <label className="text-xs font-bold text-[#486056]">State
             <input value={state} onChange={(event) => setState(event.target.value)} className="mt-1.5 min-h-11 w-full rounded-xl border border-[#dfe8e2] px-3 text-sm outline-none" />
@@ -136,7 +183,9 @@ export function MarketsPage() {
           <label className="text-xs font-bold text-[#486056]">District
             <select value={district} onChange={(event) => setDistrict(event.target.value)} className="mt-1.5 min-h-11 w-full rounded-xl border border-[#dfe8e2] bg-white px-3 text-sm outline-none">
               <option value="">All districts</option>
-              {[...new Set(["Salem", ...districts])].map((item) => <option key={item} value={item}>{item}</option>)}
+              {[...new Set([district, ...districts].filter(Boolean))].map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
             </select>
           </label>
           <label className="text-xs font-bold text-[#486056]">Market
@@ -145,10 +194,12 @@ export function MarketsPage() {
               {markets.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
           </label>
-          <button type="button" onClick={applySearch} className="min-h-11 self-end rounded-xl bg-[#17834D] px-4 text-sm font-bold text-white">Apply</button>
+          <button type="button" onClick={applySearch} className="min-h-11 self-end rounded-xl bg-[#17834D] px-4 text-sm font-bold text-white shadow-sm hover:bg-[#123D2B]">Apply</button>
           <label className="text-xs font-bold text-[#486056]">Commodity
             <select value={commodity} onChange={(event) => { setCommodity(event.target.value); setSearch(event.target.value); }} className="mt-1.5 min-h-11 w-full rounded-xl border border-[#dfe8e2] bg-white px-3 text-sm outline-none">
-              {[...new Set(["Tomato", ...commodities])].map((item) => <option key={item} value={item}>{item}</option>)}
+              {[...new Set([commodity, ...commodities].filter(Boolean))].map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
             </select>
           </label>
           <label className="text-xs font-bold text-[#486056]">Variety

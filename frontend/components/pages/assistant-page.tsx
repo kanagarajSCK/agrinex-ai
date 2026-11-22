@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Bot, CircleHelp, Leaf, Mic, Send, Sparkles, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Bot, CheckCircle2, CircleHelp, Leaf, MapPin, Mic, Send, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
@@ -12,12 +13,14 @@ import {
   type AssistantLanguage,
   type ChatHistoryMessage,
 } from "@/lib/assistant";
+import { saveAdvisoryFromChat } from "@/lib/advisories";
 import {
   getStoredLanguage,
   languageLabels,
   storeLanguage,
   type AppLanguage,
 } from "@/lib/i18n";
+import { useLocation } from "@/contexts/location-context";
 
 const suggestedQuestions: Record<AssistantLanguage, string[]> = {
   en: [
@@ -44,41 +47,32 @@ type DisplayMessage =
   | { role: "assistant"; content: string; response: AssistantResponse };
 
 export function AssistantPage() {
+  const { location: confirmedLocation, openOnboarding } = useLocation();
+
   const [language, setLanguage] = useState<AssistantLanguage>(getStoredLanguage);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [location, setLocation] = useState<{
-    latitude?: number;
-    longitude?: number;
-    city?: string;
-    district?: string;
-  } | null>(null);
+
+  const activeLocation = confirmedLocation
+    ? {
+        latitude: confirmedLocation.latitude,
+        longitude: confirmedLocation.longitude,
+        city: confirmedLocation.formattedName,
+        district: confirmedLocation.district,
+      }
+    : {
+        latitude: 11.6643,
+        longitude: 78.146,
+        city: "Salem, Tamil Nadu",
+        district: "Salem",
+      };
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("agrinex-weather-location");
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved) as {
-        latitude?: number;
-        longitude?: number;
-        label?: string;
-      };
-      if (
-        typeof parsed.latitude === "number" &&
-        typeof parsed.longitude === "number"
-      ) {
-        void Promise.resolve().then(() =>
-          setLocation({
-            latitude: parsed.latitude,
-            longitude: parsed.longitude,
-            city: parsed.label,
-          }),
-        );
-      }
-    } catch {
-      window.localStorage.removeItem("agrinex-weather-location");
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) {
+      void Promise.resolve().then(() => setDraft(q));
     }
   }, []);
 
@@ -105,7 +99,12 @@ export function AssistantPage() {
         message,
         language,
         history,
-        location,
+        location: activeLocation,
+      });
+      saveAdvisoryFromChat({
+        message,
+        response,
+        location: activeLocation,
       });
       setMessages((current) => [
         ...current,
@@ -130,24 +129,34 @@ export function AssistantPage() {
         title="Ask a farming question"
         description="Gemini-powered assistance with verified weather and mandi tools. General agricultural guidance is not a diagnosis or a guaranteed recommendation."
         action={
-          <label className="flex items-center gap-2 text-xs font-semibold text-[#66776d]">
-            <span>Language</span>
-            <select
-              aria-label="Assistant language"
-              value={language}
-              onChange={(event) => {
-                const nextLanguage = event.target.value as AppLanguage;
-                setLanguage(nextLanguage);
-                storeLanguage(nextLanguage);
-              }}
-              className="min-h-11 rounded-xl border border-[#dfe8e2] bg-white px-3 text-sm text-[#365344] outline-none focus:border-[#17834D]"
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => openOnboarding()}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#dfe8e2] bg-white px-3 text-xs font-semibold text-[#456052] hover:bg-[#f8faf8]"
             >
-              <option value="en">{languageLabels.en}</option>
-              <option value="ta">{languageLabels.ta}</option>
-              <option value="te">{languageLabels.te}</option>
-              <option value="hi">{languageLabels.hi}</option>
-            </select>
-          </label>
+              <MapPin className="size-3.5 text-[#17834D]" />
+              <span className="max-w-[150px] truncate">{activeLocation.city}</span>
+            </button>
+            <label className="flex items-center gap-2 text-xs font-semibold text-[#66776d]">
+              <span>Language</span>
+              <select
+                aria-label="Assistant language"
+                value={language}
+                onChange={(event) => {
+                  const nextLanguage = event.target.value as AppLanguage;
+                  setLanguage(nextLanguage);
+                  storeLanguage(nextLanguage);
+                }}
+                className="min-h-11 rounded-xl border border-[#dfe8e2] bg-white px-3 text-sm text-[#365344] outline-none focus:border-[#17834D]"
+              >
+                <option value="en">{languageLabels.en}</option>
+                <option value="ta">{languageLabels.ta}</option>
+                <option value="te">{languageLabels.te}</option>
+                <option value="hi">{languageLabels.hi}</option>
+              </select>
+            </label>
+          </div>
         }
       />
 
@@ -155,18 +164,36 @@ export function AssistantPage() {
         <Card className="min-w-0 overflow-hidden">
           <div className="flex items-center justify-between gap-3 border-b border-[#edf1ee] px-4 py-4 sm:px-5">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#e6f4ea] text-[#17834D]"><Bot aria-hidden="true" className="size-5" /></span>
-              <div className="min-w-0"><h2 className="truncate text-sm font-bold text-[#183b2b]">AgriNex AI Assistant</h2><p className="mt-0.5 text-[11px] text-[#79877f]">{location ? "Uses explicitly selected weather location context" : "No farm location supplied"}</p></div>
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#e6f4ea] text-[#17834D]">
+                <Bot aria-hidden="true" className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="truncate text-sm font-bold text-[#183b2b]">AgriNex AI Assistant</h2>
+                <p className="mt-0.5 text-[11px] text-[#79877f]">
+                  Context: {activeLocation.city}
+                </p>
+              </div>
             </div>
-            <button type="button" onClick={clearConversation} disabled={!messages.length} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-[#e0e9e3] px-3 text-xs font-bold text-[#587064] disabled:opacity-40"><Trash2 aria-hidden="true" className="size-3.5" />Clear</button>
+            <button
+              type="button"
+              onClick={clearConversation}
+              disabled={!messages.length}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-[#e0e9e3] px-3 text-xs font-bold text-[#587064] disabled:opacity-40"
+            >
+              <Trash2 aria-hidden="true" className="size-3.5" />Clear
+            </button>
           </div>
 
           <div aria-live="polite" className="min-h-[280px] space-y-4 bg-[#f8faf8] p-4 sm:min-h-[360px] sm:p-5">
             {!messages.length && !loading ? (
               <div className="mx-auto flex min-h-[245px] max-w-md flex-col items-center justify-center py-7 text-center">
-                <span className="mb-4 grid size-14 place-items-center rounded-2xl bg-[#e6f4ea] text-[#17834D]"><Sparkles aria-hidden="true" className="size-6" /></span>
+                <span className="mb-4 grid size-14 place-items-center rounded-2xl bg-[#e6f4ea] text-[#17834D]">
+                  <Sparkles aria-hidden="true" className="size-6" />
+                </span>
                 <EmptyState title="Start with a farming question" />
-                <p className="mt-3 text-xs leading-5 text-[#77857c]">Conversation is held only in this open page; it is not permanent memory.</p>
+                <p className="mt-3 text-xs leading-5 text-[#77857c]">
+                  Conversation is held only in this open page; it is not permanent memory.
+                </p>
               </div>
             ) : (
               messages.map((message, index) =>
@@ -207,6 +234,12 @@ export function AssistantPage() {
                         ))}
                       </div>
                     )}
+                    <div className="flex items-center justify-between border-t border-[#edf1ee] pt-2.5 text-[11px] text-[#748279]">
+                      <span className="inline-flex items-center gap-1 font-semibold text-[#17834D]">
+                        <CheckCircle2 aria-hidden="true" className="size-3.5 text-[#17834D]" />
+                        Saved to <Link href="/advisories" className="underline hover:text-[#123D2B]">Advisory history</Link>
+                      </span>
+                    </div>
                   </div>
                 ),
               )

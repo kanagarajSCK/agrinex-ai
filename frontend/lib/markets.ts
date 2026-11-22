@@ -47,10 +47,19 @@ export type MarketSummary = {
 
 const baseUrl = () =>
   process.env.NEXT_PUBLIC_AGRINEX_API_URL?.replace(/\/$/, "") ||
-  "http://127.0.0.1:8000";
+  (typeof window !== "undefined" && window.location.hostname === "localhost"
+    ? "http://localhost:8000"
+    : "http://127.0.0.1:8000");
 
 async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${baseUrl()}${path}`, { cache: "no-store" });
+  const url = `${baseUrl()}${path}`;
+  let response: Response;
+  try {
+    response = await fetch(url, { cache: "no-store" });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(`Market service connection failed at ${baseUrl()} (${detail}).`);
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => null) as
       | { error?: { code?: string; message?: string } }

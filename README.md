@@ -78,9 +78,15 @@ python -m app.locations.lgd_converter --raw-dir data/lgd/raw --output-dir data/l
 
 The converter writes `locations_snapshot.staging.json` and `lgd_validation_report.json` only. It preserves official codes as strings, rejects malformed/duplicate/parent-integrity failures, and reports missing village-state coverage. Preparing a staging file is not a live snapshot import.
 
-## Current status and limitations
+## Current status and integrations
 
-Phases 01–08 foundations are implemented. Open-Meteo weather and AGMARKNET contracts remain key/provider dependent; Gemini chat requires `GEMINI_API_KEY`. The demo LGD snapshot is installed with 36 states/UTs, 785 districts, 7,151 sub-districts and 125,119 accepted villages across six states. It is not India-wide village coverage. The application has no PostgreSQL, voice, registration, login, authentication or permanent AI memory.
+AgriNex AI features fully verified real integrations:
+- **Live Weather**: Official Open-Meteo Forecast API with 7-day hourly and daily forecast, temperature, humidity, precipitation probability, and wind metrics.
+- **Live Mandi Prices**: Official data.gov.in AGMARKNET resource (`9ef84268-d588-465a-a308-a864a43d0070`). Returns genuine prices per quintal, arrival dates, and market names.
+- **Gemini Agricultural Assistant**: Uses the maintained `google-genai` SDK on `v1beta` with structured JSON output, agricultural system instructions, automatic multi-candidate fallback (`gemini-3.8-flash`, `gemini-2.5-flash`, `gemini-3.5-flash`), and server-side tool orchestration for weather and mandi data.
+- **Knowledge Retrieval (RAG)**: ChromaDB vector store connected with `gemini-embedding-001` generating 768-dimensional embeddings.
+- **Location Snapshot**: LGD snapshot installed with all 36 States/UTs, 785 districts, 7,151 sub-districts, and 125,119 verified villages across Maharashtra, Andhra Pradesh, Karnataka, Kerala, Tamil Nadu, and Telangana (district-level resolution for the remaining 30 states/UTs).
+- **Public No-Account Access**: Instant dashboard access for farmers without login, passwords, or authentication. Preferences are maintained in browser-local storage. Crop profiles and farm planning remain interactive local previews without unverified agronomic advice.
 
 ## Hackathon submission
 

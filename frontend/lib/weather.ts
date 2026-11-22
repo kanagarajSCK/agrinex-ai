@@ -71,11 +71,17 @@ export async function fetchWeather(
 ): Promise<WeatherData> {
   const baseUrl =
     process.env.NEXT_PUBLIC_AGRINEX_API_URL?.replace(/\/$/, "") ||
-    "http://127.0.0.1:8000";
-  const response = await fetch(
-    `${baseUrl}/api/v1/weather/forecast?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&days=${days}`,
-    { cache: "no-store" },
-  );
+    (typeof window !== "undefined" && window.location.hostname === "localhost"
+      ? "http://localhost:8000"
+      : "http://127.0.0.1:8000");
+  const targetUrl = `${baseUrl}/api/v1/weather/forecast?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&days=${days}`;
+  let response: Response;
+  try {
+    response = await fetch(targetUrl, { cache: "no-store" });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(`Weather service connection failed at ${baseUrl} (${detail}).`);
+  }
   if (!response.ok) {
     throw new Error(`Weather service returned ${response.status}`);
   }

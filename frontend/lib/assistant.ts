@@ -35,9 +35,15 @@ export type ChatHistoryMessage = {
   content: string;
 };
 
-const baseUrl = () =>
-  process.env.NEXT_PUBLIC_AGRINEX_API_URL?.replace(/\/$/, "") ||
-  "http://127.0.0.1:8000";
+const baseUrl = () => {
+  if (process.env.NEXT_PUBLIC_AGRINEX_API_URL) {
+    return process.env.NEXT_PUBLIC_AGRINEX_API_URL.replace(/\/$/, "");
+  }
+  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+    return "http://localhost:8000";
+  }
+  return "http://127.0.0.1:8000";
+};
 
 export async function sendAssistantChat(payload: {
   message: string;
@@ -50,12 +56,24 @@ export async function sendAssistantChat(payload: {
     district?: string;
   } | null;
 }) {
-  const response = await fetch(`${baseUrl()}/api/v1/assistant/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    cache: "no-store",
-    body: JSON.stringify(payload),
-  });
+  const targetUrl = `${baseUrl()}/api/v1/assistant/chat`;
+  let response: Response;
+  try {
+    response = await fetch(targetUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      cache: "no-store",
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Cannot connect to AgriNex backend at ${targetUrl}. Ensure the FastAPI server is running on port 8000 (${detail}).`
+    );
+  }
   const body = await response.json().catch(() => null) as
     | { data?: AssistantResponse; error?: { code?: string; message?: string } }
     | null;

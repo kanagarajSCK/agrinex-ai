@@ -1,17 +1,28 @@
+import json
 from functools import lru_cache
-from typing import Literal
+from pathlib import Path
+from typing import Any, Literal
 from urllib.parse import urlsplit
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 class Settings(BaseSettings):
     app_name: str = "AgriNex AI API"
     environment: Literal["development", "test", "staging", "production"] = "development"
     api_v1_prefix: str = "/api/v1"
-    allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
-    provider_timeout_seconds: float = Field(default=8.0, gt=0, le=60, allow_inf_nan=False)
+    allowed_origins: list[str] = Field(
+        default_factory=lambda: [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3001",
+        ]
+    )
+    provider_timeout_seconds: float = Field(default=12.0, gt=0, le=60, allow_inf_nan=False)
     cache_ttl_seconds: float = Field(default=60, ge=0, le=86_400, allow_inf_nan=False)
     cache_max_entries: int = Field(default=512, ge=1, le=100_000)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
@@ -23,7 +34,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.8-flash"
     gemini_max_output_tokens: int = Field(default=1200, ge=256, le=4096)
-    gemini_timeout_seconds: float = Field(default=20.0, gt=0, le=60)
+    gemini_timeout_seconds: float = Field(default=30.0, gt=0, le=60)
     assistant_max_history: int = Field(default=10, ge=0, le=20)
     assistant_max_tool_iterations: int = Field(default=2, ge=1, le=3)
     assistant_request_body_limit_bytes: int = Field(default=32768, ge=1024, le=65536)
@@ -42,11 +53,32 @@ class Settings(BaseSettings):
     geocoding_base_url: str = "https://geocoding-api.open-meteo.com"
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(BACKEND_DIR / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
     )
+
+    @field_validator("rag_store_path", "rag_documents_path", "lgd_snapshot_path", "lgd_backup_path")
+    @classmethod
+    def resolve_relative_paths(cls, value: str) -> str:
+        path = Path(value)
+        if path.is_absolute():
+            return str(path)
+
+        # Check candidate locations (Render rootDir: backend vs repo root vs relative)
+        candidates = [
+            (BACKEND_DIR / path).resolve(),
+            (BACKEND_DIR.parent / path).resolve(),
+            (BACKEND_DIR.parent / "knowledge-base" / path.name).resolve(),
+            (BACKEND_DIR / "knowledge-base" / path.name).resolve(),
+            path.resolve(),
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+
+        return str((BACKEND_DIR / path).resolve())
 
     @field_validator("api_v1_prefix")
     @classmethod
@@ -92,15 +124,25 @@ class Settings(BaseSettings):
             raise ValueError("GEOCODING_BASE_URL must not contain a path")
         return value.strip().rstrip("/")
 
-    @field_validator("allowed_origins")
+    @field_validator("allowed_origins", mode="before")
     @classmethod
-    def validate_allowed_origins(cls, origins: list[str]) -> list[str]:
-        if not origins:
+    def validate_allowed_origins(cls, origins: Any) -> list[str]:
+        if isinstance(origins, str):
+            text = origins.strip()
+            if text.startswith("[") and text.endswith("]"):
+                try:
+                    origins = json.loads(text)
+                except Exception:
+                    origins = [x.strip() for x in text.strip("[]").split(",") if x.strip()]
+            else:
+                origins = [x.strip() for x in text.split(",") if x.strip()]
+
+        if not isinstance(origins, list) or not origins:
             raise ValueError("At least one explicit CORS origin is required")
 
         normalized: list[str] = []
         for origin in origins:
-            value = origin.strip().rstrip("/")
+            value = str(origin).strip().rstrip("/")
             parsed = urlsplit(value)
             if (
                 value == "*"
