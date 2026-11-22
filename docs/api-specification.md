@@ -74,6 +74,13 @@ Request: `AssistantChatRequest` with `message` (1–2000 characters), `language`
 
 The endpoint does not accept model names or tool names from the browser. Gemini tool calls are restricted to `get_weather` and `get_mandi_prices`, tool arguments are Pydantic-validated, and tool execution is capped by `ASSISTANT_MAX_TOOL_ITERATIONS`. Missing Gemini credentials return `503 GEMINI_API_KEY_MISSING`; quota returns `429 GEMINI_QUOTA_EXHAUSTED`, authentication/provider failures return `502`, timeouts return `504`, and invalid structured output returns `502 GEMINI_INVALID_OUTPUT`. Request bodies above `ASSISTANT_REQUEST_BODY_LIMIT_BYTES` return `413`; chat requests above the configured per-minute limit return `429 ASSISTANT_RATE_LIMIT_EXCEEDED`.
 
+## Knowledge endpoints
+
+- `GET /knowledge/documents`: lists indexed document manifest entries.
+- `POST /knowledge/retrieve`: validates a query and optional metadata filters, performs a bounded source retrieval and reports whether evidence is sufficient.
+
+Public ingestion is not exposed. Only the controlled CLI may ingest an approved source PDF.
+
 ### Error behavior
 
 - `422 REQUEST_VALIDATION_ERROR`: invalid request; response includes field paths and error types, not raw values.

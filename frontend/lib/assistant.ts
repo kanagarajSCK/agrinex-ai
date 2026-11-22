@@ -2,10 +2,18 @@ export type AssistantLanguage = "en" | "ta" | "te" | "hi";
 
 export type AssistantSource = {
   name: string;
-  source_type: "weather" | "market" | "general";
+  source_type: "weather" | "market" | "general" | "knowledge";
   retrieved_at?: string | null;
   arrival_date?: string | null;
   fields_used: string[];
+  title?: string | null;
+  institution?: string | null;
+  publication_year?: number | null;
+  document_version?: string | null;
+  page_number?: number | null;
+  page_end?: number | null;
+  source_url?: string | null;
+  document_id?: string | null;
 };
 
 export type AssistantResponse = {

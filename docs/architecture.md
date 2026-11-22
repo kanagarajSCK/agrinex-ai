@@ -18,6 +18,12 @@ The Phase 02 frontend provides `/` and `/dashboard`, `/assistant`, `/weather`, `
 
 Phase 06 uses `google-genai` from FastAPI and the configurable stable text model `gemini-3.8-flash`. The key and model are server configuration only. The assistant service constructs versioned system instructions, sends bounded recent history and explicit location context, and accepts only validated structured JSON responses. Gemini may request exactly `get_weather` or `get_mandi_prices`; tool names and Pydantic arguments are allowlisted and tool calls are limited to two iterations. Weather and mandi tools execute existing Phase 04/05 services, so provider failures and missing keys remain explicit and cannot become estimated facts.
 
+## Phase 07 knowledge retrieval
+
+Phase 07 adds `backend/app/rag/` components behind replaceable `EmbeddingProvider`, `VectorStore`, ingestion and retrieval interfaces. The initial embedding model is `gemini-embedding-001` with configurable 768-dimensional output. Chroma is used for local persistent development storage under `knowledge-base/chroma`; that directory is not durable on ephemeral hosting filesystems.
+
+Approved TNAU IDs are registered in code and can be ingested only through `python -m app.rag.cli` using a local PDF path. The PDF pipeline validates type and size, extracts page text with `pypdf`, rejects clearly incomplete text, generates bounded page-aware chunks with overlap, hashes duplicate content, preserves document versions and marks old versions inactive. Embeddings and retrieval are server-only. Retrieval uses metadata filters, cosine similarity/distance, a configurable threshold, bounded top-k/context and overlap deduplication.
+
 ## Persistence and retrieval decision
 
 Keep the hackathon experience account-free. Store a selected language and optional locality preference in browser-local storage if persistence is needed; optional conversation history remains local and clearable. Ask for geolocation only after an explicit user action. Do not send browser preferences or chat history to FastAPI unless a future requirement is reviewed and approved.

@@ -21,6 +21,7 @@ from app.schemas.weather import LocationInput, WeatherForecastRequest
 from app.services.markets import MarketService
 from app.services.provider_calls import call_with_timeout
 from app.services.weather import WeatherService
+from app.rag.retrieval import RetrievalService
 
 
 SYSTEM_INSTRUCTION = """You are AgriNex AI, an agricultural information assistant.
@@ -32,6 +33,9 @@ Do not claim to have the farmer's location unless it was explicitly supplied.
 Never give exact fertilizer or pesticide doses without crop, growth stage, soil information and verified local guidance.
 Ask only a concise follow-up when essential information is missing.
 Never guarantee yield, income, rainfall or selling price.
+Use retrieved knowledge passages only for factual agricultural claims. Do not invent citations, pages or source names.
+If retrieval evidence is insufficient, say so clearly. Do not present general knowledge as a verified TNAU/ICAR recommendation.
+Do not turn old source recommendations into current advice without qualification.
 Return only the requested JSON object. Do not include markdown."""
 
 
@@ -65,6 +69,7 @@ class AssistantService:
         max_output_tokens: int,
         max_history: int = 10,
         max_tool_iterations: int = 2,
+        retrieval_service: RetrievalService | None = None,
     ) -> None:
         self._provider = provider
         self._weather_service = weather_service
@@ -73,6 +78,7 @@ class AssistantService:
         self._max_output_tokens = max_output_tokens
         self._max_history = max_history
         self._max_tool_iterations = max_tool_iterations
+        self._retrieval_service = retrieval_service
 
     async def answer(self, request: AssistantQuestionRequest) -> AssistantAnswerResponse:
         chat_request = AssistantChatRequest(
@@ -96,6 +102,47 @@ class AssistantService:
         data_status: str = "general"
         warnings: list[str] = []
         tool_iterations = 0
+
+        if self._retrieval_service:
+            retrieval = await self._retrieval_service.retrieve(request.message)
+            if retrieval.sufficient:
+                rag_lines: list[str] = []
+                for result in retrieval.results:
+                    chunk = result.chunk
+                    rag_lines.append(
+                        "Source metadata: "
+                        f"title={chunk.title}; institution={chunk.institution}; "
+                        f"publication_year={chunk.publication_year}; "
+                        f"document_version={chunk.document_version}; "
+                        f"page={chunk.page_number}-{chunk.page_end}; "
+                        f"url={chunk.source_url}; document_id={chunk.document_id}\n"
+                        f"Passage: {chunk.text}"
+                    )
+                    verified_sources.append(
+                        AssistantSource(
+                            name=chunk.title,
+                            source_type="knowledge",
+                            institution=chunk.institution,
+                            publication_year=chunk.publication_year,
+                            document_version=chunk.document_version,
+                            page_number=chunk.page_number,
+                            page_end=chunk.page_end,
+                            source_url=chunk.source_url,
+                            document_id=chunk.document_id,
+                            fields_used=["retrieved passage"],
+                        )
+                    )
+                prompt += (
+                    "\nVerified knowledge-base evidence follows. Use only these passages "
+                    "for agricultural facts. Do not invent citations, pages or institutions. "
+                    "Every knowledge-grounded factual claim must use one of these trusted sources:\n"
+                    + "\n\n".join(rag_lines)
+                )
+                data_status = "mixed"
+            else:
+                warnings.append(
+                    "The knowledge base had insufficient relevant evidence for this question."
+                )
 
         while tool_iterations <= self._max_tool_iterations:
             text = await call_with_timeout(

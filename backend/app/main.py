@@ -22,6 +22,10 @@ from app.schemas.weather import WeatherForecastResponse
 from app.services.assistant import AssistantService
 from app.services.markets import MarketService
 from app.services.weather import WeatherService
+from app.rag.embedding import GoogleEmbeddingProvider
+from app.rag.retrieval import RetrievalService
+from app.rag.store import ChromaVectorStore
+from app.rag.ingestion import KnowledgeIngestionService
 
 
 def create_app(
@@ -54,7 +58,7 @@ def create_app(
             "Versioned, provider-independent API foundation for AgriNex AI. "
             "External data and AI integrations remain unconfigured until later phases."
         ),
-        version="0.6.0",
+        version="0.7.0",
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url=f"{app_settings.api_v1_prefix}/openapi.json",
@@ -63,6 +67,7 @@ def create_app(
             {"name": "weather", "description": "Weather provider operations"},
             {"name": "markets", "description": "Mandi market data operations"},
             {"name": "assistant", "description": "Agricultural AI question operations"},
+            {"name": "knowledge", "description": "Controlled agricultural knowledge retrieval"},
         ],
     )
     app.state.settings = app_settings
@@ -82,6 +87,26 @@ def create_app(
         timeout_seconds=app_settings.provider_timeout_seconds,
         cache_ttl_seconds=app_settings.market_cache_ttl_seconds,
     )
+    rag_store = ChromaVectorStore(app_settings.rag_store_path)
+    rag_embedding = GoogleEmbeddingProvider(
+        api_key=app_settings.gemini_api_key,
+        model=app_settings.embedding_model,
+        dimensions=app_settings.embedding_dimensions,
+        timeout_seconds=app_settings.gemini_timeout_seconds,
+    )
+    rag_retrieval = RetrievalService(
+        embedding_provider=rag_embedding,
+        store=rag_store,
+        top_k=app_settings.rag_top_k,
+        relevance_threshold=app_settings.rag_relevance_threshold,
+        max_context_chars=app_settings.rag_max_context_chars,
+    )
+    app.state.rag_ingestion = KnowledgeIngestionService(
+        embedding_provider=rag_embedding,
+        store=rag_store,
+        manifest_path=app_settings.rag_documents_path,
+    )
+    app.state.rag_retrieval = rag_retrieval
     app.state.assistant_service = AssistantService(
         provider=integrations.gemini,
         weather_service=app.state.weather_service,
@@ -90,6 +115,7 @@ def create_app(
         max_output_tokens=app_settings.gemini_max_output_tokens,
         max_history=app_settings.assistant_max_history,
         max_tool_iterations=app_settings.assistant_max_tool_iterations,
+        retrieval_service=rag_retrieval,
     )
 
     app.add_middleware(

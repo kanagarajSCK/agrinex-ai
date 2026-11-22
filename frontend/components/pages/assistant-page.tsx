@@ -182,7 +182,18 @@ export function AssistantPage() {
                       <div className="border-t border-[#edf1ee] pt-3 text-[11px] text-[#748279]">
                         <p className="font-bold text-[#456052]">Verified sources used</p>
                         {message.response.sources.map((source, sourceIndex) => (
-                          <p key={`${source.name}-${sourceIndex}`}>{source.name}{source.arrival_date ? ` · arrival ${source.arrival_date}` : ""}{source.retrieved_at ? ` · retrieved ${new Date(source.retrieved_at).toLocaleString("en-IN")}` : ""}</p>
+                          source.source_type === "knowledge" ? (
+                            <p key={`${source.name}-${sourceIndex}`}>
+                              {source.source_url ? (
+                                <a href={source.source_url} target="_blank" rel="noreferrer" className="font-semibold text-[#17834D] underline">{source.title || source.name}</a>
+                              ) : <span className="font-semibold">{source.title || source.name}</span>}
+                              {source.institution ? ` · ${source.institution}` : ""}
+                              {source.publication_year ? ` · ${source.publication_year}` : ""}
+                              {source.page_number ? ` · page ${source.page_number}${source.page_end && source.page_end !== source.page_number ? `–${source.page_end}` : ""}` : ""}
+                            </p>
+                          ) : (
+                            <p key={`${source.name}-${sourceIndex}`}>{source.name}{source.arrival_date ? ` · arrival ${source.arrival_date}` : ""}{source.retrieved_at ? ` · retrieved ${new Date(source.retrieved_at).toLocaleString("en-IN")}` : ""}</p>
+                          )
                         ))}
                       </div>
                     )}

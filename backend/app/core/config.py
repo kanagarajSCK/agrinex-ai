@@ -28,6 +28,15 @@ class Settings(BaseSettings):
     assistant_max_tool_iterations: int = Field(default=2, ge=1, le=3)
     assistant_request_body_limit_bytes: int = Field(default=32768, ge=1024, le=65536)
     assistant_rate_limit_per_minute: int = Field(default=20, ge=1, le=100)
+    embedding_model: str = "gemini-embedding-001"
+    embedding_dimensions: int = Field(default=768, ge=128, le=3072)
+    rag_store_path: str = "../knowledge-base/chroma"
+    rag_documents_path: str = "../knowledge-base/documents.json"
+    rag_top_k: int = Field(default=5, ge=1, le=20)
+    rag_relevance_threshold: float = Field(default=0.72, ge=0.0, le=1.0)
+    rag_chunk_size: int = Field(default=1200, ge=300, le=4000)
+    rag_chunk_overlap: int = Field(default=150, ge=0, le=500)
+    rag_max_context_chars: int = Field(default=6000, ge=1000, le=30000)
 
     model_config = SettingsConfigDict(
         env_file=".env",

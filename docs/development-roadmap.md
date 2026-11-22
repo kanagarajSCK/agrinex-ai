@@ -6,7 +6,7 @@
 - [x] Phase 04 — Live weather intelligence through the official Open-Meteo API.
 - [x] Phase 05 — Genuine mandi market intelligence foundation through AGMARKNET/data.gov.in.
 - [x] Phase 06 — Gemini agricultural assistant and controlled verified-data tools.
-- [ ] Phase 07 — Curated agricultural RAG and source citations.
+- [x] Phase 07 — Agricultural knowledge base and source-grounded RAG foundation.
 - [ ] Phase 08 — Reviewed multilingual content and language workflows.
 - [ ] Phase 09 — Permission-based location and farm context.
 - [ ] Phase 10 — Voice interaction UI and speech services.
@@ -23,6 +23,8 @@ Phase 05 implements the AGMARKNET/data.gov.in provider architecture, typed norma
 
 Phase 06 implements Gemini chat through the maintained `google-genai` SDK, structured assistant responses, Tamil/Telugu/Hindi/English support, bounded history, weather/mandi tool allowlisting, safe provider errors, body/rate limits and the responsive assistant UI. Live Gemini success remains dependent on a server-side key and available quota.
 
+Phase 07 implements approved TNAU source registration, controlled PDF ingestion, page-aware chunks, duplicate/content-hash detection, version preservation, `gemini-embedding-001` embeddings, a replaceable vector-store interface, local Chroma storage, relevance-bounded retrieval and trusted citation metadata. No actual approved PDF has been ingested or live embedding retrieval verified yet.
+
 ## Product and data scope
 
 - The website is public and opens directly to the dashboard. Registration, login, authentication, user accounts, and account-management features are not required and must not be added to future plans.
@@ -31,4 +33,4 @@ Phase 06 implements Gemini chat through the maintained `google-genai` SDK, struc
 - Any persistence for preferences or optional conversation history should be minimal and browser-local by default, with a way to clear it. Do not create user/profile/farm account tables.
 - No PostgreSQL or pgvector phase is currently approved. Revisit PostgreSQL only if durable, queryable, source-attributed weather/market history or operational requirements justify it. Revisit pgvector only if RAG evaluation needs a durable server-side vector index; curated source files and a small local retrieval index may be sufficient for the hackathon. RAG requires embeddings and retrieval, but not PostgreSQL or pgvector specifically.
 
-Phases 07–12 are planned only; implementation has not started. Define acceptance criteria and data-source provenance before beginning a phase. Phase 06 does not authorize RAG, voice or persistent memory.
+Phases 08–12 are planned only; implementation has not started. Define acceptance criteria and data-source provenance before beginning a phase. Phase 07 does not authorize voice or persistent memory.

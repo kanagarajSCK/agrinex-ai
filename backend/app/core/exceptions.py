@@ -77,3 +77,21 @@ class GeminiOutputError(AppError):
     def __init__(self) -> None:
         self.public_message = "The AI provider returned invalid structured output."
         super().__init__()
+
+
+class EmbeddingProviderError(AppError):
+    status_code = 502
+    code = "EMBEDDING_PROVIDER_ERROR"
+
+    def __init__(self) -> None:
+        self.public_message = "The embedding provider request failed."
+        super().__init__()
+
+
+class InsufficientEvidenceError(AppError):
+    status_code = 404
+    code = "INSUFFICIENT_EVIDENCE"
+
+    def __init__(self) -> None:
+        self.public_message = "The knowledge base has insufficient relevant evidence."
+        super().__init__()

@@ -29,10 +29,18 @@ class AssistantSource(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1, max_length=200)
-    source_type: Literal["weather", "market", "general"]
+    source_type: Literal["weather", "market", "general", "knowledge"]
     retrieved_at: datetime | None = None
     arrival_date: date | None = None
     fields_used: list[str] = Field(default_factory=list, max_length=30)
+    title: str | None = Field(default=None, max_length=300)
+    institution: str | None = Field(default=None, max_length=200)
+    publication_year: int | None = Field(default=None, ge=1000, le=2100)
+    document_version: str | None = Field(default=None, max_length=100)
+    page_number: int | None = Field(default=None, ge=1)
+    page_end: int | None = Field(default=None, ge=1)
+    source_url: str | None = Field(default=None, max_length=1000)
+    document_id: str | None = Field(default=None, max_length=200)
 
 
 class AssistantChatResponse(BaseModel):
