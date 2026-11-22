@@ -25,7 +25,7 @@ Every displayed weather, market, location, crop, and profile value is demonstrat
 
 ## Architecture
 
-Next.js provides the responsive web UI. FastAPI owns future provider access, validation, and AI orchestration through versioned API endpoints. No database or hosted backend vendor is selected. PostgreSQL may be considered for durable source-attributed weather/market history or operational needs; pgvector may be considered for a larger, persistent RAG index. Neither is required for the current hackathon scope. Read [architecture](docs/architecture.md), [storage decision](docs/database-design.md), and [security baseline](docs/security.md).
+Next.js provides the responsive web UI. FastAPI owns provider access, request validation, and future AI orchestration through typed, versioned API endpoints. Phase 03 provides the backend architecture and contracts; weather, mandi, and Gemini providers intentionally remain unconfigured and do not make network or paid API calls. No database or hosted backend vendor is selected. PostgreSQL may be considered for durable source-attributed weather/market history or operational needs; pgvector may be considered for a larger, persistent RAG index. Neither is required for the current hackathon scope. Read [architecture](docs/architecture.md), [API specification](docs/api-specification.md), [storage decision](docs/database-design.md), and [security baseline](docs/security.md).
 
 ## Repository structure
 
@@ -61,12 +61,12 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-The health endpoint is `http://localhost:8000/api/v1/health`. Run tests with `pytest` from `backend/`.
+The health endpoint is `http://localhost:8000/api/v1/health`. Interactive OpenAPI docs are at `http://localhost:8000/docs`; the versioned schema is at `http://localhost:8000/api/v1/openapi.json`. Run tests with `pytest` from `backend/`.
 
 ## Environment configuration
 
-Copy `.env.example` to `backend/.env` and set only needed values. `ALLOWED_ORIGINS` must be a JSON list. Never commit `.env` or expose provider credentials such as `GEMINI_API_KEY` to browser code. Supabase credentials are not required or configured.
+Copy `.env.example` to `backend/.env` and set only needed values. `ALLOWED_ORIGINS` must be a JSON list of explicit HTTP(S) origins; wildcards are rejected. Provider timeouts, in-memory cache TTL/capacity, and log level are configurable. No provider credentials are currently required because no external integration is configured. Never commit `.env` or expose future provider credentials to browser code. Supabase credentials are not required or configured.
 
 ## Current status and limitations
 
-Phase 02 is complete as a UI-only preview. The application contains no live agricultural information, database, weather or market integration, AI/RAG, translated content, permission-based location detection, or voice functionality. There is no registration, login, authentication, or user-account management. Demonstration content is not verified agronomic guidance.
+Phases 01–03 are complete. Phase 02 remains a UI-only preview, and Phase 03 is a backend foundation with explicit unconfigured provider adapters. The application contains no live agricultural information, database, connected weather or market integration, AI/RAG, translated content, permission-based location detection, or voice functionality. There is no registration, login, authentication, or user-account management. Demonstration content is not verified agronomic guidance.
