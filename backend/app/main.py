@@ -26,6 +26,7 @@ from app.rag.embedding import GoogleEmbeddingProvider
 from app.rag.retrieval import RetrievalService
 from app.rag.store import ChromaVectorStore
 from app.rag.ingestion import KnowledgeIngestionService
+from app.locations.repository import LocationRepository
 
 
 def create_app(
@@ -58,7 +59,7 @@ def create_app(
             "Versioned, provider-independent API foundation for AgriNex AI. "
             "External data and AI integrations remain unconfigured until later phases."
         ),
-        version="0.7.0",
+        version="0.8.0",
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url=f"{app_settings.api_v1_prefix}/openapi.json",
@@ -68,6 +69,7 @@ def create_app(
             {"name": "markets", "description": "Mandi market data operations"},
             {"name": "assistant", "description": "Agricultural AI question operations"},
             {"name": "knowledge", "description": "Controlled agricultural knowledge retrieval"},
+            {"name": "locations", "description": "India LGD location selection and resolution"},
         ],
     )
     app.state.settings = app_settings
@@ -107,6 +109,10 @@ def create_app(
         manifest_path=app_settings.rag_documents_path,
     )
     app.state.rag_retrieval = rag_retrieval
+    app.state.location_repository = LocationRepository(
+        app_settings.lgd_snapshot_path,
+        app_settings.lgd_backup_path,
+    )
     app.state.assistant_service = AssistantService(
         provider=integrations.gemini,
         weather_service=app.state.weather_service,

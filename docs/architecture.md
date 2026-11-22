@@ -24,6 +24,12 @@ Phase 07 adds `backend/app/rag/` components behind replaceable `EmbeddingProvide
 
 Approved TNAU IDs are registered in code and can be ingested only through `python -m app.rag.cli` using a local PDF path. The PDF pipeline validates type and size, extracts page text with `pypdf`, rejects clearly incomplete text, generates bounded page-aware chunks with overlap, hashes duplicate content, preserves document versions and marks old versions inactive. Embeddings and retrieval are server-only. Retrieval uses metadata filters, cosine similarity/distance, a configurable threshold, bounded top-k/context and overlap deduplication.
 
+## Phase 08 location and language
+
+Phase 08 adds a JSON snapshot-backed LGD location repository behind a replaceable repository interface. The repository performs atomic import/backup, parent validation, duplicate official-code detection and bounded state/district/place/search APIs. No national state/district/place list is invented in code. An LGD snapshot must be imported through `python -m app.locations.cli` before live official coverage can be claimed.
+
+Coordinates come from the snapshot only when explicitly present. Otherwise the fixed Open-Meteo geocoding host may be used for India, but only a single state/district-compatible match is accepted. Ambiguous or unavailable coordinates do not become weather results. Language preferences use a central frontend dictionary and browser-local storage for English, Tamil, Telugu and Hindi. Tanglish remains a code-mixed assistant input, not a guarantee of perfect fluency.
+
 ## Persistence and retrieval decision
 
 Keep the hackathon experience account-free. Store a selected language and optional locality preference in browser-local storage if persistence is needed; optional conversation history remains local and clearable. Ask for geolocation only after an explicit user action. Do not send browser preferences or chat history to FastAPI unless a future requirement is reviewed and approved.

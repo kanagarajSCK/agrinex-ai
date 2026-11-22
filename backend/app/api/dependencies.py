@@ -5,6 +5,7 @@ from app.services.markets import MarketService
 from app.services.weather import WeatherService
 from app.rag.retrieval import RetrievalService
 from app.rag.ingestion import KnowledgeIngestionService
+from app.locations.repository import LocationRepository
 
 
 def get_weather_service(request: Request) -> WeatherService:
@@ -25,3 +26,7 @@ def get_rag_retrieval(request: Request) -> RetrievalService:
 
 def get_rag_ingestion(request: Request) -> KnowledgeIngestionService:
     return request.app.state.rag_ingestion
+
+
+def get_location_repository(request: Request) -> LocationRepository:
+    return request.app.state.location_repository

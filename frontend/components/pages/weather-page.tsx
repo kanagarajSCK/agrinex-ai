@@ -16,17 +16,17 @@ import { ChartCard, MetricCard, PageHeader } from "@/components/ui/primitives";
 import { ErrorState, LoadingState, EmptyState } from "@/components/ui/states";
 import {
   fetchWeather,
-  SALEM_LOCATION,
   type WeatherLocation,
   type WeatherData,
 } from "@/lib/weather";
+import { LocationSelector } from "@/components/location/location-selector";
 
 const LOCATION_STORAGE_KEY = "agrinex-weather-location";
 
-function getInitialLocation(): WeatherLocation {
-  if (typeof window === "undefined") return SALEM_LOCATION;
+function getInitialLocation(): WeatherLocation | null {
+  if (typeof window === "undefined") return null;
   const saved = window.localStorage.getItem(LOCATION_STORAGE_KEY);
-  if (!saved) return SALEM_LOCATION;
+  if (!saved) return null;
   try {
     const parsed = JSON.parse(saved) as WeatherLocation;
     if (
@@ -42,13 +42,19 @@ function getInitialLocation(): WeatherLocation {
   } catch {
     window.localStorage.removeItem(LOCATION_STORAGE_KEY);
   }
-  return SALEM_LOCATION;
+  return null;
 }
 
 export function WeatherPage() {
-  const [location, setLocation] = useState<WeatherLocation>(getInitialLocation);
-  const [latitudeInput, setLatitudeInput] = useState(() => String(getInitialLocation().latitude));
-  const [longitudeInput, setLongitudeInput] = useState(() => String(getInitialLocation().longitude));
+  const [location, setLocation] = useState<WeatherLocation | null>(getInitialLocation);
+  const [latitudeInput, setLatitudeInput] = useState(() => {
+    const initial = getInitialLocation();
+    return initial ? String(initial.latitude) : "";
+  });
+  const [longitudeInput, setLongitudeInput] = useState(() => {
+    const initial = getInitialLocation();
+    return initial ? String(initial.longitude) : "";
+  });
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -68,7 +74,10 @@ export function WeatherPage() {
   }
 
   useEffect(() => {
-    void Promise.resolve().then(() => loadWeather(location));
+    void Promise.resolve().then(() => {
+      if (location) void loadWeather(location);
+      else setLoading(false);
+    });
     // Initial load intentionally uses the location selected during component initialization.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -134,12 +143,17 @@ export function WeatherPage() {
             <button type="button" onClick={detectLocation} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#dfe8e2] bg-white px-3.5 text-sm font-semibold text-[#42604e]">
               <Crosshair aria-hidden="true" className="size-4 text-[#17834D]" /> Detect location
             </button>
-            <button type="button" onClick={() => void loadWeather(location)} disabled={loading} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#17834D] px-3.5 text-sm font-semibold text-white disabled:opacity-60">
+            <button type="button" onClick={() => { if (location) void loadWeather(location); }} disabled={loading || !location} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#17834D] px-3.5 text-sm font-semibold text-white disabled:opacity-60">
               <RefreshCw aria-hidden="true" className={`size-4 ${loading ? "animate-spin" : ""}`} /> Refresh
             </button>
           </div>
         }
       />
+
+      <Card className="mb-5 p-4 sm:p-5">
+        <div className="mb-3"><h2 className="text-sm font-bold text-[#183b2b]">Official India location</h2><p className="mt-1 text-xs text-[#748279]">Choose from an imported LGD snapshot. No location or coordinates are fabricated.</p></div>
+        <LocationSelector />
+      </Card>
 
       <Card className="mb-5 p-4 sm:p-5">
         <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
@@ -166,7 +180,7 @@ export function WeatherPage() {
                 <p className="mt-2 text-sm text-[#d0e2d5]">Feels like {current.apparent_temperature_c == null ? "—" : `${Math.round(current.apparent_temperature_c)}°C`}</p>
               </div>
               <div className="flex items-center justify-between gap-5 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 sm:min-w-64">
-                <div><p className="text-xs text-[#c6dece]">{location.label}</p><p className="mt-1 text-xs text-[#a8c6b3]">{weather.latitude.toFixed(4)}, {weather.longitude.toFixed(4)} · {weather.timezone}</p></div>
+                <div><p className="text-xs text-[#c6dece]">{location?.label || "Selected coordinates"}</p><p className="mt-1 text-xs text-[#a8c6b3]">{weather.latitude.toFixed(4)}, {weather.longitude.toFixed(4)} · {weather.timezone}</p></div>
                 <CloudSun aria-hidden="true" className="size-12 text-[#f3cf79]" strokeWidth={1.5} />
               </div>
             </div>

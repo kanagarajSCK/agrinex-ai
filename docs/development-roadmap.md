@@ -7,11 +7,10 @@
 - [x] Phase 05 — Genuine mandi market intelligence foundation through AGMARKNET/data.gov.in.
 - [x] Phase 06 — Gemini agricultural assistant and controlled verified-data tools.
 - [x] Phase 07 — Agricultural knowledge base and source-grounded RAG foundation.
-- [ ] Phase 08 — Reviewed multilingual content and language workflows.
-- [ ] Phase 09 — Permission-based location and farm context.
-- [ ] Phase 10 — Voice interaction UI and speech services.
-- [ ] Phase 11 — Evidence-based, bounded agricultural recommendations.
-- [ ] Phase 12 — Evaluation, privacy, security and deployment readiness.
+- [x] Phase 08 — India-wide location intelligence and multilingual experience foundation.
+- [ ] Phase 09 — Voice interaction and speech services.
+- [ ] Phase 10 — Evidence-based, bounded agricultural recommendations.
+- [ ] Phase 11 — Evaluation, privacy, security and deployment readiness.
 
 Phase 01 includes the skeleton, responsive demo shell, health API, test, configuration template, and documentation. Phase 02 includes the responsive dashboard and seven feature routes, local demo-data interactions, reusable UI and responsive charts. It does not connect live providers, accounts, databases, AI, voice, or validated agricultural guidance. All values are illustrative and labelled as demonstration content.
 
@@ -25,6 +24,8 @@ Phase 06 implements Gemini chat through the maintained `google-genai` SDK, struc
 
 Phase 07 implements approved TNAU source registration, controlled PDF ingestion, page-aware chunks, duplicate/content-hash detection, version preservation, `gemini-embedding-001` embeddings, a replaceable vector-store interface, local Chroma storage, relevance-bounded retrieval and trusted citation metadata. No actual approved PDF has been ingested or live embedding retrieval verified yet.
 
+Phase 08 implements LGD snapshot import/validation/rollback, India-only location APIs, a reusable frontend location selector, explicit coordinate resolution, browser-local language/location preferences and Noto script fonts. No national LGD snapshot or live geocoding coverage is claimed until verified data and provider results are available.
+
 ## Product and data scope
 
 - The website is public and opens directly to the dashboard. Registration, login, authentication, user accounts, and account-management features are not required and must not be added to future plans.
@@ -33,4 +34,4 @@ Phase 07 implements approved TNAU source registration, controlled PDF ingestion,
 - Any persistence for preferences or optional conversation history should be minimal and browser-local by default, with a way to clear it. Do not create user/profile/farm account tables.
 - No PostgreSQL or pgvector phase is currently approved. Revisit PostgreSQL only if durable, queryable, source-attributed weather/market history or operational requirements justify it. Revisit pgvector only if RAG evaluation needs a durable server-side vector index; curated source files and a small local retrieval index may be sufficient for the hackathon. RAG requires embeddings and retrieval, but not PostgreSQL or pgvector specifically.
 
-Phases 08–12 are planned only; implementation has not started. Define acceptance criteria and data-source provenance before beginning a phase. Phase 07 does not authorize voice or persistent memory.
+Phases 09–11 are planned only; implementation has not started. Define acceptance criteria and data-source provenance before beginning a phase. Phase 08 does not authorize voice or persistent memory.

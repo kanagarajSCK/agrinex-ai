@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     rag_chunk_size: int = Field(default=1200, ge=300, le=4000)
     rag_chunk_overlap: int = Field(default=150, ge=0, le=500)
     rag_max_context_chars: int = Field(default=6000, ge=1000, le=30000)
+    lgd_snapshot_path: str = "../knowledge-base/locations_snapshot.json"
+    lgd_backup_path: str = "../knowledge-base/locations_snapshot.previous.json"
+    geocoding_base_url: str = "https://geocoding-api.open-meteo.com"
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -78,6 +81,16 @@ class Settings(BaseSettings):
         if value != "9ef84268-d588-465a-a308-a864a43d0070":
             raise ValueError("DATA_GOV_IN_RESOURCE_ID must match the verified AGMARKNET resource")
         return value
+
+    @field_validator("geocoding_base_url")
+    @classmethod
+    def validate_geocoding_url(cls, value: str) -> str:
+        parsed = urlsplit(value.strip().rstrip("/"))
+        if parsed.scheme != "https" or parsed.netloc != "geocoding-api.open-meteo.com":
+            raise ValueError("GEOCODING_BASE_URL must use the official Open-Meteo geocoding host")
+        if parsed.path:
+            raise ValueError("GEOCODING_BASE_URL must not contain a path")
+        return value.strip().rstrip("/")
 
     @field_validator("allowed_origins")
     @classmethod

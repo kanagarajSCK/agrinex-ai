@@ -4,9 +4,16 @@ import { useState } from "react";
 import { Bell, Globe2, Languages, Leaf, ShieldCheck, UserRound } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { DemoBadge, DemoSelect, PageHeader } from "@/components/ui/primitives";
+import { LocationSelector } from "@/components/location/location-selector";
+import {
+  getStoredLanguage,
+  languageLabels,
+  storeLanguage,
+  type AppLanguage,
+} from "@/lib/i18n";
 
 export function SettingsPage() {
-  const [language, setLanguage] = useState("English");
+  const [language, setLanguage] = useState<AppLanguage>(getStoredLanguage);
   const [weatherAlerts, setWeatherAlerts] = useState(false);
   const [marketUpdates, setMarketUpdates] = useState(false);
   const [units, setUnits] = useState("Metric");
@@ -38,13 +45,26 @@ export function SettingsPage() {
           </Card>
 
           <Card className="p-5 sm:p-6">
+            <div className="mb-5 flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#e8f1fb] text-[#3774a6]"><Globe2 aria-hidden="true" className="size-[18px]" /></span><div><h2 className="text-sm font-bold text-[#183b2b]">Official India location</h2><p className="mt-1 text-xs text-[#829087]">Uses the imported LGD snapshot; no fake location codes or GPS assumption</p></div></div>
+            <LocationSelector />
+            <button type="button" onClick={() => window.localStorage.removeItem("agrinex-selected-location")} className="mt-3 min-h-10 rounded-xl border border-[#dfe8e2] px-3 text-xs font-bold text-[#587064]">Clear selected location</button>
+          </Card>
+
+          <Card className="p-5 sm:p-6">
             <div className="mb-5 flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#eff5f0] text-[#17834D]"><Languages aria-hidden="true" className="size-[18px]" /></span><div><h2 className="text-sm font-bold text-[#183b2b]">Language preference</h2><p className="mt-1 text-xs text-[#829087]">Selector is interactive; localized content is not included</p></div></div>
             <label className="block max-w-sm text-xs font-semibold text-[#526b5b]">Display language
-              <DemoSelect aria-label="Display language" value={language} onChange={(event) => setLanguage(event.target.value)} className="mt-1.5 w-full">
-                <option>English</option><option>தமிழ் · Preview</option><option>తెలుగు · Preview</option><option>हिन्दी · Preview</option>
+              <DemoSelect aria-label="Display language" value={language} onChange={(event) => {
+                const nextLanguage = event.target.value as AppLanguage;
+                setLanguage(nextLanguage);
+                storeLanguage(nextLanguage);
+              }} className="mt-1.5 w-full">
+                <option value="en">{languageLabels.en}</option>
+                <option value="ta">{languageLabels.ta}</option>
+                <option value="te">{languageLabels.te}</option>
+                <option value="hi">{languageLabels.hi}</option>
               </DemoSelect>
             </label>
-            <p className="mt-3 text-[11px] text-[#829087]">Selected in this page only: <strong className="text-[#526b5b]">{language}</strong></p>
+            <p className="mt-3 text-[11px] text-[#829087]">Saved in browser preferences: <strong className="text-[#526b5b]">{languageLabels[language]}</strong></p>
           </Card>
 
           <Card className="p-5 sm:p-6">

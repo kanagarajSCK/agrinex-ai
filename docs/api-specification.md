@@ -81,6 +81,18 @@ The endpoint does not accept model names or tool names from the browser. Gemini 
 
 Public ingestion is not exposed. Only the controlled CLI may ingest an approved source PDF.
 
+## India location endpoints
+
+- `GET /locations/states`
+- `GET /locations/districts?state_code=...`
+- `GET /locations/sub-districts?district_code=...`
+- `GET /locations/places?district_code=...&query=...`
+- `GET /locations/search?query=...`
+- `GET /locations/{location_id}`
+- `GET /locations/{location_id}/resolve`
+
+Location responses include entity type, English/local name, LGD code, parent hierarchy fields and source metadata. With no imported LGD snapshot, lists return zero records rather than fabricated India coverage. Coordinate resolution returns snapshot coordinates or a single verified Open-Meteo geocoding match restricted to India. Ambiguity or missing coordinates return a not-found coordinate-resolution error.
+
 ### Error behavior
 
 - `422 REQUEST_VALIDATION_ERROR`: invalid request; response includes field paths and error types, not raw values.

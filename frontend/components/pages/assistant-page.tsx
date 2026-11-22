@@ -12,6 +12,12 @@ import {
   type AssistantLanguage,
   type ChatHistoryMessage,
 } from "@/lib/assistant";
+import {
+  getStoredLanguage,
+  languageLabels,
+  storeLanguage,
+  type AppLanguage,
+} from "@/lib/i18n";
 
 const suggestedQuestions: Record<AssistantLanguage, string[]> = {
   en: [
@@ -38,7 +44,7 @@ type DisplayMessage =
   | { role: "assistant"; content: string; response: AssistantResponse };
 
 export function AssistantPage() {
-  const [language, setLanguage] = useState<AssistantLanguage>("en");
+  const [language, setLanguage] = useState<AssistantLanguage>(getStoredLanguage);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -129,13 +135,17 @@ export function AssistantPage() {
             <select
               aria-label="Assistant language"
               value={language}
-              onChange={(event) => setLanguage(event.target.value as AssistantLanguage)}
+              onChange={(event) => {
+                const nextLanguage = event.target.value as AppLanguage;
+                setLanguage(nextLanguage);
+                storeLanguage(nextLanguage);
+              }}
               className="min-h-11 rounded-xl border border-[#dfe8e2] bg-white px-3 text-sm text-[#365344] outline-none focus:border-[#17834D]"
             >
-              <option value="en">English</option>
-              <option value="ta">தமிழ்</option>
-              <option value="te">తెలుగు</option>
-              <option value="hi">हिन्दी</option>
+              <option value="en">{languageLabels.en}</option>
+              <option value="ta">{languageLabels.ta}</option>
+              <option value="te">{languageLabels.te}</option>
+              <option value="hi">{languageLabels.hi}</option>
             </select>
           </label>
         }

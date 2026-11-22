@@ -18,7 +18,13 @@ import {
   Sprout,
   X,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  getStoredLanguage,
+  languageLabels,
+  storeLanguage,
+  type AppLanguage,
+} from "@/lib/i18n";
 
 const navigation = [
   { href: "/dashboard", label: "Overview", icon: House },
@@ -91,8 +97,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [language, setLanguage] = useState("English");
-  const [farm, setFarm] = useState("Salem, Tamil Nadu");
+  const [language, setLanguage] = useState<AppLanguage>(getStoredLanguage);
+  const [farm] = useState(() => {
+    if (typeof window === "undefined") return "No verified location selected";
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem("agrinex-selected-location") || "null") as
+        | { name?: string }
+        | null;
+      return parsed?.name || "No verified location selected";
+    } catch {
+      return "No verified location selected";
+    }
+  });
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   const isActive = (href: string) => pathname === href || (href === "/dashboard" && pathname === "/");
 
@@ -145,15 +165,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <label className="hidden items-center gap-2 rounded-xl border border-[#e0e9e3] bg-white px-3 py-2 text-xs text-[#456052] md:flex">
                 <Map aria-hidden="true" className="size-4 text-[#17834D]" />
                 <span className="sr-only">Selected farm location</span>
-                <select
-                  aria-label="Selected farm location"
-                  value={farm}
-                  onChange={(event) => setFarm(event.target.value)}
-                  className="max-w-36 bg-transparent font-semibold outline-none"
-                >
-                  <option>Salem, Tamil Nadu</option>
-                  <option>Erode, Tamil Nadu · Sample</option>
-                </select>
+                <span className="max-w-36 truncate font-semibold">{farm}</span>
                 <ChevronDown aria-hidden="true" className="size-3" />
               </label>
               <label className="hidden items-center gap-1.5 rounded-xl border border-[#e0e9e3] bg-white px-3 py-2 text-xs text-[#456052] sm:flex">
@@ -162,13 +174,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <select
                   aria-label="Language"
                   value={language}
-                  onChange={(event) => setLanguage(event.target.value)}
+                  onChange={(event) => {
+                    const nextLanguage = event.target.value as AppLanguage;
+                    setLanguage(nextLanguage);
+                    storeLanguage(nextLanguage);
+                    document.documentElement.lang = nextLanguage;
+                  }}
                   className="max-w-24 bg-transparent font-semibold outline-none"
                 >
-                  <option>English</option>
-                  <option>தமிழ் · Preview</option>
-                  <option>తెలుగు · Preview</option>
-                  <option>हिन्दी · Preview</option>
+                  <option value="en">{languageLabels.en}</option>
+                  <option value="ta">{languageLabels.ta}</option>
+                  <option value="te">{languageLabels.te}</option>
+                  <option value="hi">{languageLabels.hi}</option>
                 </select>
               </label>
               <div className="relative">
@@ -222,18 +239,20 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex items-center justify-between gap-2 border-t border-[#edf1ee] px-4 py-2 md:hidden">
             <label className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-[#486056]">
               <Map aria-hidden="true" className="size-3.5 shrink-0 text-[#17834D]" />
-              <select aria-label="Selected farm location" value={farm} onChange={(event) => setFarm(event.target.value)} className="min-w-0 max-w-[190px] truncate bg-transparent outline-none">
-                <option>Salem, Tamil Nadu</option>
-                <option>Erode, Tamil Nadu · Sample</option>
-              </select>
+              <span className="min-w-0 max-w-[190px] truncate">{farm}</span>
             </label>
             <label className="flex items-center gap-1 text-xs font-semibold text-[#486056]">
               <Languages aria-hidden="true" className="size-3.5 text-[#17834D]" />
-              <select aria-label="Language" value={language} onChange={(event) => setLanguage(event.target.value)} className="max-w-24 bg-transparent outline-none">
-                <option>English</option>
-                <option>தமிழ் · Preview</option>
-                <option>తెలుగు · Preview</option>
-                <option>हिन्दी · Preview</option>
+              <select aria-label="Language" value={language} onChange={(event) => {
+                const nextLanguage = event.target.value as AppLanguage;
+                setLanguage(nextLanguage);
+                storeLanguage(nextLanguage);
+                document.documentElement.lang = nextLanguage;
+              }} className="max-w-24 bg-transparent outline-none">
+                <option value="en">{languageLabels.en}</option>
+                <option value="ta">{languageLabels.ta}</option>
+                <option value="te">{languageLabels.te}</option>
+                <option value="hi">{languageLabels.hi}</option>
               </select>
             </label>
             <DemoLabel compact />

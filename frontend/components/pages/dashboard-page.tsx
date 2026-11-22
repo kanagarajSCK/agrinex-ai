@@ -18,7 +18,7 @@ import {
 import { RainfallChart, TemperatureChart } from "@/components/charts/intelligence-charts";
 import { Card } from "@/components/ui/card";
 import { ChartCard, DemoBadge, MetricCard, PageHeader, SectionTitle } from "@/components/ui/primitives";
-import { fetchWeather, SALEM_LOCATION, type WeatherData } from "@/lib/weather";
+import { fetchWeather, type WeatherData } from "@/lib/weather";
 import { fetchMarketPrices, type MarketPrice } from "@/lib/markets";
 
 const quickActions = [
@@ -36,17 +36,23 @@ export function DashboardPage() {
 
   useEffect(() => {
     let active = true;
-    let initial = SALEM_LOCATION;
     const saved = window.localStorage.getItem("agrinex-weather-location");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as { latitude: number; longitude: number };
-        if (Number.isFinite(parsed.latitude) && Number.isFinite(parsed.longitude)) {
-          initial = { ...initial, latitude: parsed.latitude, longitude: parsed.longitude };
-        }
-      } catch {
-        window.localStorage.removeItem("agrinex-weather-location");
+    if (!saved) {
+      void Promise.resolve().then(() => setWeatherError("No verified location selected."));
+      return () => { active = false; };
+    }
+    let initial: { latitude: number; longitude: number } | null = null;
+    try {
+      const parsed = JSON.parse(saved) as { latitude: number; longitude: number };
+      if (Number.isFinite(parsed.latitude) && Number.isFinite(parsed.longitude)) {
+        initial = parsed;
       }
+    } catch {
+      window.localStorage.removeItem("agrinex-weather-location");
+    }
+    if (!initial) {
+      void Promise.resolve().then(() => setWeatherError("Location coordinates could not be resolved."));
+      return () => { active = false; };
     }
     void fetchWeather(initial.latitude, initial.longitude, 7)
       .then((data) => {
@@ -62,9 +68,25 @@ export function DashboardPage() {
 
   useEffect(() => {
     let active = true;
+    const saved = window.localStorage.getItem("agrinex-selected-location");
+    let state = "";
+    let district = "";
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as { stateName?: string; districtName?: string };
+        state = parsed.stateName || "";
+        district = parsed.districtName || "";
+      } catch {
+        window.localStorage.removeItem("agrinex-selected-location");
+      }
+    }
+    if (!state || !district) {
+      void Promise.resolve().then(() => setMarketError("Select an official state and district for mandi coverage."));
+      return () => { active = false; };
+    }
     void fetchMarketPrices({
-      state: "Tamil Nadu",
-      district: "Salem",
+      state,
+      district,
       limit: 20,
       commodity: "Tomato",
     })
