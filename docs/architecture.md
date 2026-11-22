@@ -30,6 +30,8 @@ Phase 08 adds a JSON snapshot-backed LGD location repository behind a replaceabl
 
 Coordinates come from the snapshot only when explicitly present. Otherwise the fixed Open-Meteo geocoding host may be used for India, but only a single state/district-compatible match is accepted. Ambiguous or unavailable coordinates do not become weather results. Language preferences use a central frontend dictionary and browser-local storage for English, Tamil, Telugu and Hindi. Tanglish remains a code-mixed assistant input, not a guarantee of perfect fluency.
 
+LGD CSV preparation is isolated from live snapshot import. `app.locations.lgd_converter` detects national and village CSV roles by headers, preserves official codes as strings, maps hierarchy codes, rejects corrupted/malformed rows and writes only `backend/data/lgd/staging/` output. It reports missing village-state coverage and never overwrites `knowledge-base/locations_snapshot.json`.
+
 ## Persistence and retrieval decision
 
 Keep the hackathon experience account-free. Store a selected language and optional locality preference in browser-local storage if persistence is needed; optional conversation history remains local and clearable. Ask for geolocation only after an explicit user action. Do not send browser preferences or chat history to FastAPI unless a future requirement is reviewed and approved.

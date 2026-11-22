@@ -67,6 +67,25 @@ The health endpoint is `http://localhost:8000/api/v1/health`. Interactive OpenAP
 
 Copy `.env.example` to `backend/.env` and set only needed values. `ALLOWED_ORIGINS` must be a JSON list of explicit HTTP(S) origins; wildcards are rejected. Set `DATA_GOV_IN_API_KEY` for mandi calls and `GEMINI_API_KEY` for AI chat and embeddings; never place either in `NEXT_PUBLIC_*` variables or browser code. `GEMINI_MODEL` defaults to `gemini-3.8-flash`; `EMBEDDING_MODEL` defaults to the stable `gemini-embedding-001` at 768 dimensions. RAG settings control local Chroma storage, chunking, top-k retrieval, relevance threshold and context size. Never commit `.env` or expose provider credentials to browser code. Supabase credentials are not required or configured.
 
+### LGD staging preparation
+
+Official LGD raw CSV files can be prepared without importing the live location snapshot:
+
+```powershell
+cd backend
+python -m app.locations.lgd_converter --raw-dir data/lgd/raw --output-dir data/lgd/staging --snapshot-id lgd-national-preparation
+```
+
+The converter writes `locations_snapshot.staging.json` and `lgd_validation_report.json` only. It preserves official codes as strings, rejects malformed/duplicate/parent-integrity failures, and reports missing village-state coverage. Preparing a staging file is not a live snapshot import.
+
 ## Current status and limitations
 
-Phases 01–08 foundations are implemented. Open-Meteo weather and AGMARKNET contracts remain key/provider dependent; Gemini chat requires `GEMINI_API_KEY`. Phase 07 adds approved-source document ingestion, page-aware chunks, embeddings, local Chroma retrieval, trusted citations and insufficient-evidence handling. Phase 08 adds an LGD snapshot repository, India-only location APIs, coordinate resolution and four-language browser preferences. No official LGD snapshot or live embedding/mandi/Gemini connectivity is verified in this workspace; the application has no PostgreSQL, voice, registration, login, authentication or permanent AI memory.
+Phases 01–08 foundations are implemented. Open-Meteo weather and AGMARKNET contracts remain key/provider dependent; Gemini chat requires `GEMINI_API_KEY`. The demo LGD snapshot is installed with 36 states/UTs, 785 districts, 7,151 sub-districts and 125,119 accepted villages across six states. It is not India-wide village coverage. The application has no PostgreSQL, voice, registration, login, authentication or permanent AI memory.
+
+## Hackathon submission
+
+AgriNex AI helps farmers and agricultural support teams bring verified location context, live weather, market lookup and a safety-constrained AI assistant into one responsive workspace. The frontend uses Next.js, React, TypeScript and Tailwind; FastAPI and Pydantic provide modular API services.
+
+The demo supports national state, district and sub-district selection. Village records are currently available only for Maharashtra, Andhra Pradesh, Karnataka, Kerala, Tamil Nadu and Telangana. Weather is live only when Open-Meteo is available. Market and Gemini features require their credentials and show unavailable states instead of fabricated content. The RAG store is optional and remains empty when Chroma is unavailable.
+
+For the 3–5 minute presentation flow and transparent limitations, see [the demo walkthrough](docs/demo-walkthrough.md).

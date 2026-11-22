@@ -10,6 +10,8 @@ class LocationRepository:
     def __init__(self, snapshot_path: str, backup_path: str) -> None:
         self._snapshot_path = Path(snapshot_path)
         self._backup_path = Path(backup_path)
+        self._cached_snapshot: LocationSnapshot | None = None
+        self._cached_mtime_ns: int | None = None
         self._snapshot_path.parent.mkdir(parents=True, exist_ok=True)
 
     def load(self) -> LocationSnapshot:
@@ -20,8 +22,14 @@ class LocationRepository:
                 records=[],
             )
         try:
+            modified_at = self._snapshot_path.stat().st_mtime_ns
+            if self._cached_snapshot is not None and self._cached_mtime_ns == modified_at:
+                return self._cached_snapshot
             payload = json.loads(self._snapshot_path.read_text(encoding="utf-8"))
-            return LocationSnapshot.model_validate(payload)
+            snapshot = LocationSnapshot.model_validate(payload)
+            self._cached_snapshot = snapshot
+            self._cached_mtime_ns = modified_at
+            return snapshot
         except (json.JSONDecodeError, ValueError) as exc:
             raise ValueError("The LGD location snapshot is invalid") from exc
 
@@ -32,13 +40,13 @@ class LocationRepository:
         if len(ids) != len(set(ids)):
             raise ValueError("Duplicate location_id values are not allowed")
 
-        lgd_codes = [
-            record.lgd_code
+        lgd_keys = [
+            (record.entity_type, record.lgd_code)
             for record in records
             if record.lgd_code
         ]
-        if len(lgd_codes) != len(set(lgd_codes)):
-            raise ValueError("Duplicate LGD codes are not allowed")
+        if len(lgd_keys) != len(set(lgd_keys)):
+            raise ValueError("Duplicate LGD codes are not allowed within an entity type")
 
         record_ids = set(ids)
         rejected: list[dict] = []
@@ -66,6 +74,8 @@ class LocationRepository:
             encoding="utf-8",
         )
         temporary.replace(self._snapshot_path)
+        self._cached_snapshot = snapshot
+        self._cached_mtime_ns = self._snapshot_path.stat().st_mtime_ns
         report = {
             "snapshot_id": snapshot.snapshot_id,
             "accepted": len(validated),
@@ -82,6 +92,8 @@ class LocationRepository:
         temporary = self._snapshot_path.with_suffix(".tmp")
         temporary.write_text(payload, encoding="utf-8")
         temporary.replace(self._snapshot_path)
+        self._cached_snapshot = snapshot
+        self._cached_mtime_ns = self._snapshot_path.stat().st_mtime_ns
         return snapshot
 
     def states(self) -> list[LocationRecord]:

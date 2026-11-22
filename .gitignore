@@ -20,3 +20,11 @@ frontend/out/
 *.log
 .DS_Store
 Thumbs.db
+
+
+# LGD raw downloads, staging and audit files
+backend/data/lgd/raw/
+backend/data/lgd/staging/
+
+# Local rollback snapshot
+knowledge-base/locations_snapshot.previous.json

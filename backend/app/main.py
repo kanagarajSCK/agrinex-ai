@@ -24,7 +24,7 @@ from app.services.markets import MarketService
 from app.services.weather import WeatherService
 from app.rag.embedding import GoogleEmbeddingProvider
 from app.rag.retrieval import RetrievalService
-from app.rag.store import ChromaVectorStore
+from app.rag.store import ChromaVectorStore, InMemoryVectorStore
 from app.rag.ingestion import KnowledgeIngestionService
 from app.locations.repository import LocationRepository
 
@@ -89,7 +89,15 @@ def create_app(
         timeout_seconds=app_settings.provider_timeout_seconds,
         cache_ttl_seconds=app_settings.market_cache_ttl_seconds,
     )
-    rag_store = ChromaVectorStore(app_settings.rag_store_path)
+    try:
+        rag_store = ChromaVectorStore(app_settings.rag_store_path)
+    except ModuleNotFoundError as exc:
+        if exc.name != "chromadb":
+            raise
+        # Core API routes must remain usable when the optional local RAG runtime
+        # is unavailable; this empty store never fabricates retrieval evidence.
+        logger.warning("rag.store_unavailable", extra={"reason": "chromadb not installed"})
+        rag_store = InMemoryVectorStore()
     rag_embedding = GoogleEmbeddingProvider(
         api_key=app_settings.gemini_api_key,
         model=app_settings.embedding_model,

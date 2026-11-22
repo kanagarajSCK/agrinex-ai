@@ -123,7 +123,9 @@ export function LocationSelector({
   }
 
   return (
-    <div className={`grid gap-3 ${compact ? "md:grid-cols-3" : "md:grid-cols-2 xl:grid-cols-4"}`}>
+    <div>
+      <p className="mb-3 rounded-xl border border-[#dce9df] bg-[#f5faf6] px-3 py-2 text-xs leading-5 text-[#456052]">National state, district and sub-district directory available. Village-level records currently available for Maharashtra, Andhra Pradesh, Karnataka, Kerala, Tamil Nadu and Telangana.</p>
+      <div className={`grid gap-3 ${compact ? "md:grid-cols-3" : "md:grid-cols-2 xl:grid-cols-4"}`}>
       <label className="text-xs font-bold text-[#486056]">State / Union Territory
         <select
           value={state?.location_id || ""}
@@ -177,6 +179,7 @@ export function LocationSelector({
       </div>
       {loading && <p className="text-xs text-[#748279] md:col-span-full">Loading official location snapshot…</p>}
       {error && <p role="alert" className="text-xs text-[#9b741f] md:col-span-full">{error}</p>}
+      </div>
     </div>
   );
 }

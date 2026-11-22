@@ -122,6 +122,18 @@ def test_duplicate_lgd_codes_are_rejected() -> None:
             repo.import_snapshot(snapshot)
 
 
+def test_lgd_codes_are_scoped_by_entity_type() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        repo = LocationRepository(str(Path(directory) / "locations.json"), str(Path(directory) / "previous.json"))
+        snapshot = make_snapshot([
+            {"location_id": "state-1", "lgd_code": "1", "name_en": "State", "entity_type": "state", "state_code": "1"},
+            {"location_id": "district-1", "lgd_code": "1", "name_en": "District", "parent_location_id": "state-1", "entity_type": "district", "state_code": "1", "district_code": "1"},
+        ])
+        imported, report = repo.import_snapshot(snapshot)
+        assert len(imported.records) == 2
+        assert report["rejected"] == 0
+
+
 def test_missing_parent_is_rejected_from_validated_snapshot() -> None:
     with tempfile.TemporaryDirectory() as directory:
         repo = LocationRepository(
