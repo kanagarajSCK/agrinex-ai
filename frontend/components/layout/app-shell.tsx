@@ -114,7 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             Preview workspace
           </div>
           <p className="text-xs leading-5 text-[#b9d1c2]">
-            Sample screens only. No live farm data or services are connected.
+            Public demo workspace. Live weather is connected; other services remain previews.
           </p>
         </div>
       </aside>
@@ -268,7 +268,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="mx-auto min-h-[calc(100vh-68px)] w-full max-w-[1600px] px-4 pb-28 pt-5 sm:px-6 sm:pt-7 md:pb-10 lg:px-8 xl:px-10">
           {children}
           <footer className="mt-9 border-t border-[#e0e9e3] py-5 text-center text-[11px] leading-5 text-[#738279]">
-            AgriNex AI preview · All values and locations are illustrative demonstration data. No live services are connected.
+            AgriNex AI · Live Open-Meteo weather; market, AI and other values remain demonstration data.
           </footer>
         </main>
       </div>

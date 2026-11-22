@@ -41,11 +41,20 @@ const tooltipStyle = {
   boxShadow: "0 8px 24px rgba(16,28,24,0.08)",
 };
 
-export function TemperatureChart({ compact = false }: { compact?: boolean }) {
+export type WeatherChartPoint = { day: string; high: number; low: number; rain: number };
+
+export function TemperatureChart({
+  compact = false,
+  data,
+}: {
+  compact?: boolean;
+  data?: WeatherChartPoint[];
+}) {
+  const chartData = data ?? forecastData;
   return (
     <div className="h-[210px] w-full min-w-0 sm:h-[238px]">
       <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1} initialDimension={{ width: 300, height: compact ? 210 : 238 }}>
-        <AreaChart data={forecastData} margin={{ top: 8, right: 6, left: -18, bottom: 0 }}>
+        <AreaChart data={chartData} margin={{ top: 8, right: 6, left: -18, bottom: 0 }}>
           <defs>
             <linearGradient id="high-temp-fill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#17834D" stopOpacity={0.19} />
@@ -59,7 +68,7 @@ export function TemperatureChart({ compact = false }: { compact?: boolean }) {
           <CartesianGrid stroke="#edf2ee" strokeDasharray="3 4" vertical={false} />
           <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#829087", fontSize: 10 }} />
           <YAxis hide={!compact} domain={[18, 36]} tick={{ fill: "#829087", fontSize: 10 }} axisLine={false} tickLine={false} unit="°" />
-          <Tooltip contentStyle={tooltipStyle} formatter={(value, name) => [`${value}°C`, name === "high" ? "High · demo" : "Low · demo"]} />
+          <Tooltip contentStyle={tooltipStyle} formatter={(value, name) => [`${value}°C`, name === "high" ? (data ? "High" : "High · demo") : (data ? "Low" : "Low · demo")]} />
           <Area type="monotone" dataKey="high" name="high" stroke="#17834D" strokeWidth={2.5} fill="url(#high-temp-fill)" />
           <Area type="monotone" dataKey="low" name="low" stroke="#79aabd" strokeWidth={2} fill="url(#low-temp-fill)" />
         </AreaChart>
@@ -68,15 +77,16 @@ export function TemperatureChart({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export function RainfallChart() {
+export function RainfallChart({ data }: { data?: WeatherChartPoint[] }) {
+  const chartData = data ?? forecastData;
   return (
     <div className="h-[210px] w-full min-w-0 sm:h-[238px]">
       <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1} initialDimension={{ width: 300, height: 210 }}>
-        <BarChart data={forecastData} margin={{ top: 8, right: 6, left: -20, bottom: 0 }}>
+        <BarChart data={chartData} margin={{ top: 8, right: 6, left: -20, bottom: 0 }}>
           <CartesianGrid stroke="#edf2ee" strokeDasharray="3 4" vertical={false} />
           <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#829087", fontSize: 10 }} />
           <YAxis domain={[0, 100]} tickFormatter={(value: number) => `${value}%`} tick={{ fill: "#829087", fontSize: 10 }} axisLine={false} tickLine={false} />
-          <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${value}%`, "Rain probability · demo"]} />
+          <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${value}%`, data ? "Rain probability" : "Rain probability · demo"]} />
           <Bar dataKey="rain" name="Rain probability" fill="#6ba6c6" radius={[5, 5, 0, 0]} maxBarSize={28} />
         </BarChart>
       </ResponsiveContainer>

@@ -12,9 +12,13 @@ from app.schemas.weather import WeatherForecastRequest, WeatherForecastResponse
 
 
 def test_unconfigured_integrations_return_explicit_service_unavailable() -> None:
-    client = TestClient(app)
+    test_app = create_app(
+        Settings(environment="test"),
+        ProviderSet(),
+    )
+    client = TestClient(test_app)
     requests = [
-        ("/api/v1/weather/forecast", {"location": {"city": "Salem"}}),
+        ("/api/v1/weather/forecast", {"location": {"latitude": 11.6643, "longitude": 78.146}}),
         ("/api/v1/markets/search", {"commodity": "tomato"}),
         ("/api/v1/assistant/questions", {"question": "How do I identify this crop?", "language": "en"}),
     ]
@@ -30,7 +34,7 @@ def test_validation_error_uses_standard_envelope_without_echoing_input() -> None
     client = TestClient(app)
     response = client.post(
         "/api/v1/weather/forecast",
-        json={"location": {"city": "private-farm-label"}, "days": 8},
+        json={"location": {"latitude": 11.6643, "longitude": 78.146}, "days": 8},
     )
 
     assert response.status_code == 422
@@ -75,6 +79,8 @@ def test_openapi_exposes_versioned_operations() -> None:
     paths = response.json()["paths"]
     assert "/api/v1/health" in paths
     assert "/api/v1/weather/forecast" in paths
+    assert "/api/v1/weather/current" in paths
+    assert "/api/v1/weather/hourly" in paths
     assert "/api/v1/markets/search" in paths
     assert "/api/v1/assistant/questions" in paths
 
@@ -96,7 +102,7 @@ def test_provider_timeout_returns_safe_gateway_timeout() -> None:
     )
     response = TestClient(test_app).post(
         "/api/v1/weather/forecast",
-        json={"location": {"city": "Salem"}},
+        json={"location": {"latitude": 11.6643, "longitude": 78.146}},
     )
 
     assert response.status_code == 504
@@ -120,7 +126,7 @@ def test_provider_failure_has_safe_error_response() -> None:
     )
     response = TestClient(test_app).post(
         "/api/v1/weather/forecast",
-        json={"location": {"city": "Salem"}},
+        json={"location": {"latitude": 11.6643, "longitude": 78.146}},
     )
 
     assert response.status_code == 502

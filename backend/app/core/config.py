@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     cache_ttl_seconds: float = Field(default=60, ge=0, le=86_400, allow_inf_nan=False)
     cache_max_entries: int = Field(default=512, ge=1, le=100_000)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+    open_meteo_base_url: str = "https://api.open-meteo.com"
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -29,6 +30,16 @@ class Settings(BaseSettings):
         if not value.startswith("/") or value == "/" or value.endswith("/"):
             raise ValueError("API prefix must be an absolute path without a trailing slash")
         return value
+
+    @field_validator("open_meteo_base_url")
+    @classmethod
+    def validate_open_meteo_url(cls, value: str) -> str:
+        parsed = urlsplit(value.strip().rstrip("/"))
+        if parsed.scheme != "https" or parsed.netloc != "api.open-meteo.com":
+            raise ValueError("OPEN_METEO_BASE_URL must use the official api.open-meteo.com host")
+        if parsed.path:
+            raise ValueError("OPEN_METEO_BASE_URL must not contain a path")
+        return value.strip().rstrip("/")
 
     @field_validator("allowed_origins")
     @classmethod

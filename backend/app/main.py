@@ -13,6 +13,7 @@ from app.core.config import Settings, get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging, request_id_context
 from app.integrations.providers import ProviderSet
+from app.integrations.weather import OpenMeteoWeatherProvider
 from app.schemas.markets import MarketSearchResponse
 from app.schemas.weather import WeatherForecastResponse
 from app.services.assistant import AssistantService
@@ -25,7 +26,12 @@ def create_app(
     providers: ProviderSet | None = None,
 ) -> FastAPI:
     app_settings = settings or get_settings()
-    integrations = providers or ProviderSet()
+    integrations = providers or ProviderSet(
+        weather=OpenMeteoWeatherProvider(
+            base_url=app_settings.open_meteo_base_url,
+            timeout_seconds=app_settings.provider_timeout_seconds,
+        )
+    )
     logger = configure_logging(app_settings.log_level)
 
     app = FastAPI(
@@ -34,7 +40,7 @@ def create_app(
             "Versioned, provider-independent API foundation for AgriNex AI. "
             "External data and AI integrations remain unconfigured until later phases."
         ),
-        version="0.3.0",
+        version="0.4.0",
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url=f"{app_settings.api_v1_prefix}/openapi.json",

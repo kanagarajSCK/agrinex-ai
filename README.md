@@ -25,7 +25,7 @@ Every displayed weather, market, location, crop, and profile value is demonstrat
 
 ## Architecture
 
-Next.js provides the responsive web UI. FastAPI owns provider access, request validation, and future AI orchestration through typed, versioned API endpoints. Phase 03 provides the backend architecture and contracts; weather, mandi, and Gemini providers intentionally remain unconfigured and do not make network or paid API calls. No database or hosted backend vendor is selected. PostgreSQL may be considered for durable source-attributed weather/market history or operational needs; pgvector may be considered for a larger, persistent RAG index. Neither is required for the current hackathon scope. Read [architecture](docs/architecture.md), [API specification](docs/api-specification.md), [storage decision](docs/database-design.md), and [security baseline](docs/security.md).
+Next.js provides the responsive web UI. FastAPI owns provider access, request validation, and future AI orchestration through typed, versioned API endpoints. Phase 04 connects only the official Open-Meteo public forecast provider. Mandi and Gemini providers remain unconnected. No database or hosted backend vendor is selected. PostgreSQL may be considered for durable source-attributed weather/market history or operational needs; pgvector may be considered for a larger, persistent RAG index. Neither is required for the current hackathon scope. Read [architecture](docs/architecture.md), [API specification](docs/api-specification.md), [storage decision](docs/database-design.md), and [security baseline](docs/security.md).
 
 ## Repository structure
 
@@ -69,4 +69,4 @@ Copy `.env.example` to `backend/.env` and set only needed values. `ALLOWED_ORIGI
 
 ## Current status and limitations
 
-Phases 01–03 are complete. Phase 02 remains a UI-only preview, and Phase 03 is a backend foundation with explicit unconfigured provider adapters. The application contains no live agricultural information, database, connected weather or market integration, AI/RAG, translated content, permission-based location detection, or voice functionality. There is no registration, login, authentication, or user-account management. Demonstration content is not verified agronomic guidance.
+Phases 01–04 are complete. Phase 04 provides live Open-Meteo weather for coordinates through FastAPI and honest frontend loading/error states; Salem coordinates are only a demo default. The application has no connected mandi or AI provider, database, RAG, translated content, or voice functionality. Location detection remains browser-initiated and permission-based. There is no registration, login, authentication, or user-account management. Market and advisory content remains demonstration data and is not verified agronomic guidance.

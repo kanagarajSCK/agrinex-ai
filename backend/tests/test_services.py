@@ -18,6 +18,8 @@ class CountingWeatherProvider:
         self.calls += 1
         return WeatherForecastResponse(
             location_label=request.location.city or "Unknown",
+            latitude=request.location.latitude or 0,
+            longitude=request.location.longitude or 0,
             source=SourceAttribution(
                 provider="sample",
                 source_name="Test provider",
@@ -34,7 +36,7 @@ def test_weather_service_reuses_cached_provider_result() -> None:
             timeout_seconds=1,
             cache_ttl_seconds=30,
         )
-        request = WeatherForecastRequest(location={"city": "Salem"})
+        request = WeatherForecastRequest(location={"latitude": 11.6643, "longitude": 78.146})
 
         first = await service.get_forecast(request)
         second = await service.get_forecast(request)
@@ -46,9 +48,9 @@ def test_weather_service_reuses_cached_provider_result() -> None:
 
 
 def test_cache_key_does_not_expose_location() -> None:
-    request = WeatherForecastRequest(location={"city": "private-farm-label"})
+    request = WeatherForecastRequest(location={"latitude": 11.6643, "longitude": 78.146})
 
     key = request_cache_key("weather", request)
 
-    assert "private-farm-label" not in key
+    assert "11.6643" not in key
     assert key.startswith("weather:")

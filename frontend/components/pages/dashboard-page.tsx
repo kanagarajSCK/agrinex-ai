@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   ArrowDownRight,
   ArrowRight,
@@ -16,15 +19,58 @@ import {
 import { MarketTrendChart, RainfallChart, TemperatureChart } from "@/components/charts/intelligence-charts";
 import { Card } from "@/components/ui/card";
 import { ChartCard, DemoBadge, MetricCard, PageHeader, SectionTitle } from "@/components/ui/primitives";
+import { fetchWeather, SALEM_LOCATION, type WeatherData } from "@/lib/weather";
 
 const quickActions = [
   { href: "/assistant", label: "Ask AI", description: "Explore the assistant preview", icon: Bot, tone: "bg-[#e6f4ea] text-[#17834D]" },
-  { href: "/weather", label: "Check weather", description: "View sample forecast", icon: CloudSun, tone: "bg-[#e8f1fb] text-[#3774a6]" },
+  { href: "/weather", label: "Check weather", description: "View live forecast", icon: CloudSun, tone: "bg-[#e8f1fb] text-[#3774a6]" },
   { href: "/markets", label: "Compare prices", description: "Explore demo mandi data", icon: ShoppingBasket, tone: "bg-[#fff4dd] text-[#9b741f]" },
   { href: "/crops", label: "Crop guidance", description: "Browse information placeholders", icon: Sprout, tone: "bg-[#f0eafa] text-[#7252a3]" },
 ];
 
 export function DashboardPage() {
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [weatherError, setWeatherError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    let initial = SALEM_LOCATION;
+    const saved = window.localStorage.getItem("agrinex-weather-location");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as { latitude: number; longitude: number };
+        if (Number.isFinite(parsed.latitude) && Number.isFinite(parsed.longitude)) {
+          initial = { ...initial, latitude: parsed.latitude, longitude: parsed.longitude };
+        }
+      } catch {
+        window.localStorage.removeItem("agrinex-weather-location");
+      }
+    }
+    void fetchWeather(initial.latitude, initial.longitude, 7)
+      .then((data) => {
+        if (active) setWeather(data);
+      })
+      .catch(() => {
+        if (active) setWeatherError("Live weather is unavailable.");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const chartData = (weather?.forecast ?? []).map((day) => {
+    const date = new Date(`${day.date}T12:00:00`);
+    return {
+      day: date.toLocaleDateString("en-IN", { weekday: "short" }),
+      high: day.high_c ?? 0,
+      low: day.low_c ?? 0,
+      rain: day.rain_probability_percent ?? 0,
+    };
+  });
+
+  const temperature = weather?.current?.temperature_c;
+  const rainProbability = weather?.forecast?.[0]?.rain_probability_percent;
+
   return (
     <>
       <PageHeader
@@ -66,8 +112,8 @@ export function DashboardPage() {
       </Card>
 
       <section aria-label="Farm overview metrics" className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <MetricCard label="Current temperature" value="28°C" detail="Salem · illustrative" icon={CloudSun} accent="amber" />
-        <MetricCard label="Rain probability" value="42%" detail="Today · illustrative" icon={CloudRain} accent="blue" />
+        <MetricCard label="Current temperature" value={temperature == null ? "Unavailable" : `${Math.round(temperature)}°C`} detail={weather ? "Salem · live" : "Weather service"} icon={CloudSun} accent="amber" />
+        <MetricCard label="Rain probability" value={rainProbability == null ? "Unavailable" : `${Math.round(rainProbability)}%`} detail={weather ? "Today · live forecast" : "Weather service"} icon={CloudRain} accent="blue" />
         <MetricCard label="Active crops" value="3 crops" detail="Sample farm profile" icon={Sprout} />
         <MetricCard label="Tomato modal price" value="₹2,450" detail="Per quintal · demo" icon={ShoppingBasket} accent="violet" />
       </section>
@@ -87,16 +133,16 @@ export function DashboardPage() {
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.85fr)]">
         <div className="grid min-w-0 gap-4">
-          <ChartCard title="Weather outlook" subtitle="Seven-day temperature forecast · sample values" action={<Link href="/weather" className="inline-flex items-center gap-1 text-xs font-bold text-[#17834D]">Details <ArrowRight aria-hidden="true" className="size-3.5" /></Link>}>
+          <ChartCard title="Weather outlook" subtitle={weather ? "Seven-day temperature forecast · live" : "Seven-day temperature forecast · unavailable"} action={<Link href="/weather" className="inline-flex items-center gap-1 text-xs font-bold text-[#17834D]">Details <ArrowRight aria-hidden="true" className="size-3.5" /></Link>}>
             <div className="mb-3 flex flex-wrap gap-3 text-[11px] font-medium text-[#68796f]">
-              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-[#17834D]" /> High temperature · demo</span>
-              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-[#79aabd]" /> Low temperature · demo</span>
+              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-[#17834D]" /> High temperature{weather ? "" : " · unavailable"}</span>
+              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-[#79aabd]" /> Low temperature{weather ? "" : " · unavailable"}</span>
             </div>
-            <TemperatureChart compact />
+            {chartData.length ? <TemperatureChart compact data={chartData} /> : <p className="rounded-xl bg-[#f7f9f7] p-4 text-xs text-[#748279]">{weatherError || "Loading live weather…"}</p>}
           </ChartCard>
 
           <ChartCard title="Rain probability" subtitle="Sample forecast probability by day">
-            <RainfallChart />
+            {chartData.length ? <RainfallChart data={chartData} /> : <p className="rounded-xl bg-[#f7f9f7] p-4 text-xs text-[#748279]">{weatherError || "Loading live weather…"}</p>}
           </ChartCard>
         </div>
 
@@ -104,20 +150,20 @@ export function DashboardPage() {
           <Card className="p-5">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <div className="flex flex-wrap items-center gap-2"><h2 className="text-[15px] font-bold text-[#183b2b]">Today in Salem</h2><DemoBadge>DEMO</DemoBadge></div>
-                <p className="mt-1 text-xs text-[#758279]">Sample conditions · Salem, Tamil Nadu</p>
+                <div className="flex flex-wrap items-center gap-2"><h2 className="text-[15px] font-bold text-[#183b2b]">Today in Salem</h2>{weather ? <span className="rounded-full bg-[#e6f4ea] px-2 py-1 text-[10px] font-bold text-[#17834D]">LIVE</span> : null}</div>
+                <p className="mt-1 text-xs text-[#758279]">{weather ? "Open-Meteo · Salem demo coordinates" : "Live weather unavailable"}</p>
               </div>
               <CloudSun aria-hidden="true" className="size-6 text-[#d2a13a]" />
             </div>
             <div className="flex items-end gap-3">
-              <span className="text-4xl font-extrabold tracking-tight text-[#183b2b]">28°</span>
-              <span className="pb-1 text-sm text-[#68796f]">Partly cloudy · demo</span>
+              <span className="text-4xl font-extrabold tracking-tight text-[#183b2b]">{temperature == null ? "—" : `${Math.round(temperature)}°`}</span>
+              <span className="pb-1 text-sm text-[#68796f]">{weather ? "Current temperature" : "Unavailable"}</span>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3 border-t border-[#edf1ee] pt-4">
-              <div className="flex items-center gap-2 text-xs text-[#61746a]"><Droplets aria-hidden="true" className="size-4 text-[#508bb3]" /> Humidity <strong className="ml-auto text-[#294535]">68% · demo</strong></div>
-              <div className="flex items-center gap-2 text-xs text-[#61746a]"><Wind aria-hidden="true" className="size-4 text-[#508bb3]" /> Wind <strong className="ml-auto text-[#294535]">12 km/h · demo</strong></div>
+              <div className="flex items-center gap-2 text-xs text-[#61746a]"><Droplets aria-hidden="true" className="size-4 text-[#508bb3]" /> Humidity <strong className="ml-auto text-[#294535]">{weather?.current?.humidity_percent == null ? "—" : `${Math.round(weather.current.humidity_percent)}%`}</strong></div>
+              <div className="flex items-center gap-2 text-xs text-[#61746a]"><Wind aria-hidden="true" className="size-4 text-[#508bb3]" /> Wind <strong className="ml-auto text-[#294535]">{weather?.current?.wind_speed_kph == null ? "—" : `${Math.round(weather.current.wind_speed_kph)} km/h`}</strong></div>
             </div>
-            <p className="mt-4 rounded-xl bg-[#f7f9f7] px-3 py-2.5 text-[11px] leading-5 text-[#748279]">Illustrative interface values only. Weather source and observation time are not connected.</p>
+            <p className="mt-4 rounded-xl bg-[#f7f9f7] px-3 py-2.5 text-[11px] leading-5 text-[#748279]">{weather?.source.source_name ? `${weather.source.source_name} · ${weather.timezone}` : weatherError || "Connecting to weather service…"}</p>
           </Card>
 
           <ChartCard title="Market snapshot" subtitle="Illustrative modal prices · ₹ per quintal" action={<Link href="/markets" className="text-xs font-bold text-[#17834D]">Compare →</Link>}>
@@ -147,7 +193,7 @@ export function DashboardPage() {
 
       <p className="mt-6 flex items-start gap-2 rounded-xl border border-[#e5e9e6] bg-white/70 p-3 text-[11px] leading-5 text-[#728177]">
         <ArrowUpRight aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-        No live weather, market or AI service is connected. All figures, locations and recommendations on this dashboard are sample data for interface demonstration.
+        Weather values are requested live from Open-Meteo through FastAPI. Market values, crop profiles and recommendations remain demonstration data.
       </p>
     </>
   );

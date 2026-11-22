@@ -1,6 +1,6 @@
 # API Specification
 
-Base path: `/api/v1`. JSON is the default format. All operations are public and require no account or authentication. Responses use typed Pydantic schemas. Provider integrations are intentionally not configured; no endpoint returns invented live data or makes external/paid requests.
+Base path: `/api/v1`. JSON is the default format. All operations are public and require no account or authentication. Responses use typed Pydantic schemas. Open-Meteo weather is live only for valid coordinate requests; no invented weather fallback is used.
 
 Interactive OpenAPI documentation is available at `/docs` and `/redoc`; the JSON schema is `/api/v1/openapi.json`.
 
@@ -31,9 +31,21 @@ Errors use a stable envelope and do not echo submitted values:
 
 Returns `200 OK` with the service status. This endpoint checks the API process only; it does not assert that external providers are available.
 
+### `GET /weather/current`
+
+Required query parameters: `latitude` (`-90` to `90`) and `longitude` (`-180` to `180`). Returns current Open-Meteo conditions plus a short response context. Invalid coordinates return `422`.
+
+### `GET /weather/forecast`
+
+Required query parameters: `latitude` and `longitude`; optional `days` (`1` to `7`, default `7`). Returns coordinates, timezone, units, source attribution, retrieval timestamp, current conditions, and daily/hourly context.
+
+### `GET /weather/hourly`
+
+Required query parameters: `latitude` and `longitude`. Returns the Open-Meteo seven-day hourly forecast context.
+
 ### `POST /weather/forecast`
 
-Request: `WeatherForecastRequest` with a `location` (city, district, or coordinate pair) and optional `days` from 1 to 7. Returns `503 INTEGRATION_NOT_CONFIGURED` until a weather provider is selected and configured.
+Compatibility route using typed `WeatherForecastRequest` with a coordinate pair and optional `days` from 1 to 7. City-only location requests are not geocoded in this phase and return validation errors.
 
 ### `POST /markets/search`
 
