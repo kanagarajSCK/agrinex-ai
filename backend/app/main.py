@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
@@ -14,6 +15,7 @@ from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging, request_id_context
 from app.integrations.providers import ProviderSet
 from app.integrations.markets import DataGovMarketProvider
+from app.integrations.gemini import GoogleGeminiProvider
 from app.integrations.weather import OpenMeteoWeatherProvider
 from app.schemas.markets import MarketSearchResponse
 from app.schemas.weather import WeatherForecastResponse
@@ -38,6 +40,11 @@ def create_app(
             timeout_seconds=app_settings.provider_timeout_seconds,
             resource_id=app_settings.data_gov_in_resource_id,
         ),
+        gemini=GoogleGeminiProvider(
+            api_key=app_settings.gemini_api_key,
+            model=app_settings.gemini_model,
+            timeout_seconds=app_settings.gemini_timeout_seconds,
+        ),
     )
     logger = configure_logging(app_settings.log_level)
 
@@ -47,7 +54,7 @@ def create_app(
             "Versioned, provider-independent API foundation for AgriNex AI. "
             "External data and AI integrations remain unconfigured until later phases."
         ),
-        version="0.5.0",
+        version="0.6.0",
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url=f"{app_settings.api_v1_prefix}/openapi.json",
@@ -77,7 +84,12 @@ def create_app(
     )
     app.state.assistant_service = AssistantService(
         provider=integrations.gemini,
-        timeout_seconds=app_settings.provider_timeout_seconds,
+        weather_service=app.state.weather_service,
+        market_service=app.state.market_service,
+        timeout_seconds=app_settings.gemini_timeout_seconds,
+        max_output_tokens=app_settings.gemini_max_output_tokens,
+        max_history=app_settings.assistant_max_history,
+        max_tool_iterations=app_settings.assistant_max_tool_iterations,
     )
 
     app.add_middleware(
@@ -88,6 +100,8 @@ def create_app(
         allow_headers=["Content-Type", "X-Request-ID"],
         expose_headers=["X-Request-ID"],
     )
+
+    assistant_windows: dict[str, list[float]] = {}
 
     @app.middleware("http")
     async def request_context(
@@ -100,6 +114,54 @@ def create_app(
         started_at = time.perf_counter()
         status_code = 500
         try:
+            if (
+                request.url.path == f"{app_settings.api_v1_prefix}/assistant/chat"
+                and request.headers.get("content-length")
+            ):
+                try:
+                    content_length = int(request.headers["content-length"])
+                except ValueError:
+                    content_length = 0
+                if content_length > app_settings.assistant_request_body_limit_bytes:
+                    status_code = 413
+                    return JSONResponse(
+                        status_code=413,
+                        content={
+                            "error": {
+                                "code": "REQUEST_BODY_TOO_LARGE",
+                                "message": "The assistant request body is too large.",
+                                "request_id": request_id,
+                                "issues": [],
+                            }
+                        },
+                        headers={"X-Request-ID": request_id},
+                    )
+
+            if request.url.path == f"{app_settings.api_v1_prefix}/assistant/chat":
+                client_key = request.client.host if request.client else "unknown"
+                now = time.monotonic()
+                window = [
+                    timestamp
+                    for timestamp in assistant_windows.get(client_key, [])
+                    if now - timestamp < 60
+                ]
+                if len(window) >= app_settings.assistant_rate_limit_per_minute:
+                    status_code = 429
+                    return JSONResponse(
+                        status_code=429,
+                        content={
+                            "error": {
+                                "code": "ASSISTANT_RATE_LIMIT_EXCEEDED",
+                                "message": "Too many assistant requests. Please retry later.",
+                                "request_id": request_id,
+                                "issues": [],
+                            }
+                        },
+                        headers={"X-Request-ID": request_id},
+                    )
+                window.append(now)
+                assistant_windows[client_key] = window
+
             response = await call_next(request)
             status_code = response.status_code
             response.headers["X-Request-ID"] = request_id

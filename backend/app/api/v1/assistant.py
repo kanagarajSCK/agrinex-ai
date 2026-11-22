@@ -1,11 +1,37 @@
 from fastapi import APIRouter, Depends, Request
 
 from app.api.dependencies import get_assistant_service
-from app.schemas.assistant import AssistantAnswerResponse, AssistantQuestionRequest
+from app.schemas.assistant import (
+    AssistantAnswerResponse,
+    AssistantChatRequest,
+    AssistantChatResponse,
+    AssistantQuestionRequest,
+)
 from app.schemas.common import ApiResponse, ErrorResponse
 from app.services.assistant import AssistantService
 
 router = APIRouter(prefix="/assistant", tags=["assistant"])
+
+
+@router.post(
+    "/chat",
+    response_model=ApiResponse[AssistantChatResponse],
+    responses={
+        422: {"model": ErrorResponse, "description": "Invalid request"},
+        429: {"model": ErrorResponse, "description": "Quota or rate limit"},
+        502: {"model": ErrorResponse, "description": "Provider or structured output error"},
+        503: {"model": ErrorResponse, "description": "Provider not configured"},
+        504: {"model": ErrorResponse, "description": "Provider timeout"},
+    },
+    summary="Chat with the agricultural AI assistant",
+)
+async def chat(
+    payload: AssistantChatRequest,
+    request: Request,
+    service: AssistantService = Depends(get_assistant_service),
+) -> ApiResponse[AssistantChatResponse]:
+    answer = await service.chat(payload)
+    return ApiResponse(data=answer, request_id=request.state.request_id)
 
 
 @router.post(

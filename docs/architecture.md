@@ -14,6 +14,10 @@ Phase 05 uses the official data.gov.in AGMARKNET resource `9ef84268-d588-465a-a3
 
 The Phase 02 frontend provides `/` and `/dashboard`, `/assistant`, `/weather`, `/markets`, `/crops`, `/farms`, `/advisories`, and `/settings`. Its weather, market, crop, and farm content remains illustrative demonstration data. No external source, database, AI, or voice integration is active in the frontend.
 
+## Phase 06 Gemini orchestration
+
+Phase 06 uses `google-genai` from FastAPI and the configurable stable text model `gemini-3.8-flash`. The key and model are server configuration only. The assistant service constructs versioned system instructions, sends bounded recent history and explicit location context, and accepts only validated structured JSON responses. Gemini may request exactly `get_weather` or `get_mandi_prices`; tool names and Pydantic arguments are allowlisted and tool calls are limited to two iterations. Weather and mandi tools execute existing Phase 04/05 services, so provider failures and missing keys remain explicit and cannot become estimated facts.
+
 ## Persistence and retrieval decision
 
 Keep the hackathon experience account-free. Store a selected language and optional locality preference in browser-local storage if persistence is needed; optional conversation history remains local and clearable. Ask for geolocation only after an explicit user action. Do not send browser preferences or chat history to FastAPI unless a future requirement is reviewed and approved.

@@ -41,3 +41,39 @@ class ProviderError(AppError):
     def __init__(self, provider: str) -> None:
         self.public_message = f"The {provider} provider request failed."
         super().__init__()
+
+
+class GeminiApiKeyMissingError(AppError):
+    status_code = 503
+    code = "GEMINI_API_KEY_MISSING"
+
+    def __init__(self) -> None:
+        self.public_message = "The Gemini API key is not configured."
+        super().__init__()
+
+
+class GeminiQuotaError(AppError):
+    status_code = 429
+    code = "GEMINI_QUOTA_EXHAUSTED"
+
+    def __init__(self) -> None:
+        self.public_message = "The AI provider quota is temporarily exhausted."
+        super().__init__()
+
+
+class GeminiAuthenticationError(AppError):
+    status_code = 502
+    code = "GEMINI_AUTHENTICATION_ERROR"
+
+    def __init__(self) -> None:
+        self.public_message = "The AI provider credentials could not be authenticated."
+        super().__init__()
+
+
+class GeminiOutputError(AppError):
+    status_code = 502
+    code = "GEMINI_INVALID_OUTPUT"
+
+    def __init__(self) -> None:
+        self.public_message = "The AI provider returned invalid structured output."
+        super().__init__()

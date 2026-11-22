@@ -20,6 +20,14 @@ class Settings(BaseSettings):
     data_gov_in_resource_id: str = "9ef84268-d588-465a-a308-a864a43d0070"
     data_gov_in_base_url: str = "https://api.data.gov.in"
     market_cache_ttl_seconds: float = Field(default=900, ge=0, le=86_400, allow_inf_nan=False)
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-3.8-flash"
+    gemini_max_output_tokens: int = Field(default=1200, ge=256, le=4096)
+    gemini_timeout_seconds: float = Field(default=20.0, gt=0, le=60)
+    assistant_max_history: int = Field(default=10, ge=0, le=20)
+    assistant_max_tool_iterations: int = Field(default=2, ge=1, le=3)
+    assistant_request_body_limit_bytes: int = Field(default=32768, ge=1024, le=65536)
+    assistant_rate_limit_per_minute: int = Field(default=20, ge=1, le=100)
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -20,7 +20,6 @@ def test_unconfigured_integrations_return_explicit_service_unavailable() -> None
     client = TestClient(test_app)
     requests = [
         ("/api/v1/weather/forecast", {"location": {"latitude": 11.6643, "longitude": 78.146}}),
-        ("/api/v1/assistant/questions", {"question": "How do I identify this crop?", "language": "en"}),
     ]
 
     for path, payload in requests:
@@ -101,6 +100,7 @@ def test_openapi_exposes_versioned_operations() -> None:
     assert "/api/v1/markets/summary" in paths
     assert "/api/v1/markets/trends" in paths
     assert "/api/v1/assistant/questions" in paths
+    assert "/api/v1/assistant/chat" in paths
 
 
 class SlowWeatherProvider:

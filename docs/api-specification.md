@@ -68,6 +68,12 @@ Request: `MarketSearchRequest` with a commodity, optional market/location, and o
 
 Request: `AssistantQuestionRequest` with a bounded question, supported language code, and optional location. Returns `503 INTEGRATION_NOT_CONFIGURED` until an AI provider is selected and configured.
 
+### `POST /assistant/chat`
+
+Request: `AssistantChatRequest` with `message` (1–2000 characters), `language` (`en`, `ta`, `te`, `hi`), up to 10 bounded history messages, and optional explicit location context. Returns `AssistantChatResponse` with answer, language, intent, confidence label, clarification state, key points, recommendations, verified sources, data status and warnings.
+
+The endpoint does not accept model names or tool names from the browser. Gemini tool calls are restricted to `get_weather` and `get_mandi_prices`, tool arguments are Pydantic-validated, and tool execution is capped by `ASSISTANT_MAX_TOOL_ITERATIONS`. Missing Gemini credentials return `503 GEMINI_API_KEY_MISSING`; quota returns `429 GEMINI_QUOTA_EXHAUSTED`, authentication/provider failures return `502`, timeouts return `504`, and invalid structured output returns `502 GEMINI_INVALID_OUTPUT`. Request bodies above `ASSISTANT_REQUEST_BODY_LIMIT_BYTES` return `413`; chat requests above the configured per-minute limit return `429 ASSISTANT_RATE_LIMIT_EXCEEDED`.
+
 ### Error behavior
 
 - `422 REQUEST_VALIDATION_ERROR`: invalid request; response includes field paths and error types, not raw values.

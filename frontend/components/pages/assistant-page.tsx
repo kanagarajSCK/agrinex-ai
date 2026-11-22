@@ -1,39 +1,120 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import {
-  Bot,
-  ChartNoAxesCombined,
-  Check,
-  CircleHelp,
-  CloudSun,
-  Leaf,
-  Mic,
-  Send,
-  Sparkles,
-} from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { Bot, CircleHelp, Leaf, Mic, Send, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
-import { DemoBadge, PageHeader } from "@/components/ui/primitives";
+import { PageHeader } from "@/components/ui/primitives";
+import {
+  sendAssistantChat,
+  type AssistantResponse,
+  type AssistantLanguage,
+  type ChatHistoryMessage,
+} from "@/lib/assistant";
 
-const suggestedQuestions = [
-  "What should I check before watering my field?",
-  "How can I compare nearby market prices?",
-  "What information should I note about my crop?",
-];
+const suggestedQuestions: Record<AssistantLanguage, string[]> = {
+  en: [
+    "What is the weather forecast for my selected farm?",
+    "Explain today's available mandi prices for tomato.",
+    "How should I prepare my field before sowing?",
+  ],
+  ta: [
+    "எனது தேர்ந்தெடுத்த பண்ணைக்கு வானிலை முன்னறிவிப்பு என்ன?",
+    "தக்காளி மண்டி விலைகளை விளக்குங்கள்.",
+  ],
+  te: [
+    "నా ఎంచుకున్న పొలం కోసం వాతావరణ సూచన ఏమిటి?",
+    "టమాటా మండీ ధరలను వివరించండి.",
+  ],
+  hi: [
+    "मेरे चुने हुए खेत के लिए मौसम पूर्वानुमान क्या है?",
+    "टमाटर के उपलब्ध मंडी भाव समझाइए।",
+  ],
+};
+
+type DisplayMessage =
+  | { role: "user"; content: string }
+  | { role: "assistant"; content: string; response: AssistantResponse };
 
 export function AssistantPage() {
-  const [language, setLanguage] = useState("English");
+  const [language, setLanguage] = useState<AssistantLanguage>("en");
   const [draft, setDraft] = useState("");
-  const [question, setQuestion] = useState("");
+  const [messages, setMessages] = useState<DisplayMessage[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [location, setLocation] = useState<{
+    latitude?: number;
+    longitude?: number;
+    city?: string;
+    district?: string;
+  } | null>(null);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    const saved = window.localStorage.getItem("agrinex-weather-location");
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved) as {
+        latitude?: number;
+        longitude?: number;
+        label?: string;
+      };
+      if (
+        typeof parsed.latitude === "number" &&
+        typeof parsed.longitude === "number"
+      ) {
+        void Promise.resolve().then(() =>
+          setLocation({
+            latitude: parsed.latitude,
+            longitude: parsed.longitude,
+            city: parsed.label,
+          }),
+        );
+      }
+    } catch {
+      window.localStorage.removeItem("agrinex-weather-location");
+    }
+  }, []);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const trimmed = draft.trim();
-    if (!trimmed) return;
-    setQuestion(trimmed);
+    const message = draft.trim();
+    if (!message || loading) return;
+
+    setError("");
+    setLoading(true);
+    setMessages((current) => [...current, { role: "user", content: message }]);
     setDraft("");
+
+    const history: ChatHistoryMessage[] = messages
+      .slice(-8)
+      .map((item) =>
+        item.role === "user"
+          ? { role: "user", content: item.content }
+          : { role: "assistant", content: item.content },
+      );
+
+    try {
+      const response = await sendAssistantChat({
+        message,
+        language,
+        history,
+        location,
+      });
+      setMessages((current) => [
+        ...current,
+        { role: "assistant", content: response.answer, response },
+      ]);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The assistant is unavailable.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function clearConversation() {
+    setMessages([]);
+    setError("");
   }
 
   return (
@@ -41,8 +122,23 @@ export function AssistantPage() {
       <PageHeader
         eyebrow="AgriNex assistant"
         title="Ask a farming question"
-        description="A multilingual assistant interface preview. No AI service is connected, and questions are not sent or answered."
-        action={<label className="flex items-center gap-2 text-xs font-semibold text-[#66776d]"><span>Language</span><select aria-label="Assistant language" value={language} onChange={(event) => setLanguage(event.target.value)} className="min-h-11 rounded-xl border border-[#dfe8e2] bg-white px-3 text-sm text-[#365344] outline-none focus:border-[#17834D]"><option>English</option><option>தமிழ் · Preview</option><option>తెలుగు · Preview</option><option>हिन्दी · Preview</option></select></label>}
+        description="Gemini-powered assistance with verified weather and mandi tools. General agricultural guidance is not a diagnosis or a guaranteed recommendation."
+        action={
+          <label className="flex items-center gap-2 text-xs font-semibold text-[#66776d]">
+            <span>Language</span>
+            <select
+              aria-label="Assistant language"
+              value={language}
+              onChange={(event) => setLanguage(event.target.value as AssistantLanguage)}
+              className="min-h-11 rounded-xl border border-[#dfe8e2] bg-white px-3 text-sm text-[#365344] outline-none focus:border-[#17834D]"
+            >
+              <option value="en">English</option>
+              <option value="ta">தமிழ்</option>
+              <option value="te">తెలుగు</option>
+              <option value="hi">हिन्दी</option>
+            </select>
+          </label>
+        }
       />
 
       <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(290px,0.8fr)]">
@@ -50,27 +146,52 @@ export function AssistantPage() {
           <div className="flex items-center justify-between gap-3 border-b border-[#edf1ee] px-4 py-4 sm:px-5">
             <div className="flex min-w-0 items-center gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#e6f4ea] text-[#17834D]"><Bot aria-hidden="true" className="size-5" /></span>
-              <div className="min-w-0"><h2 className="truncate text-sm font-bold text-[#183b2b]">AgriNex AI Assistant</h2><p className="mt-0.5 text-[11px] text-[#79877f]">Preview mode · not connected</p></div>
+              <div className="min-w-0"><h2 className="truncate text-sm font-bold text-[#183b2b]">AgriNex AI Assistant</h2><p className="mt-0.5 text-[11px] text-[#79877f]">{location ? "Uses explicitly selected weather location context" : "No farm location supplied"}</p></div>
             </div>
-            <DemoBadge>PREVIEW</DemoBadge>
+            <button type="button" onClick={clearConversation} disabled={!messages.length} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-[#e0e9e3] px-3 text-xs font-bold text-[#587064] disabled:opacity-40"><Trash2 aria-hidden="true" className="size-3.5" />Clear</button>
           </div>
 
           <div aria-live="polite" className="min-h-[280px] space-y-4 bg-[#f8faf8] p-4 sm:min-h-[360px] sm:p-5">
-            {!question ? (
+            {!messages.length && !loading ? (
               <div className="mx-auto flex min-h-[245px] max-w-md flex-col items-center justify-center py-7 text-center">
                 <span className="mb-4 grid size-14 place-items-center rounded-2xl bg-[#e6f4ea] text-[#17834D]"><Sparkles aria-hidden="true" className="size-6" /></span>
-                <EmptyState title="Start with a question or choose an example" />
-                <p className="mt-3 text-xs leading-5 text-[#77857c]">Your message will stay in this browser preview and will not be sent to a service.</p>
+                <EmptyState title="Start with a farming question" />
+                <p className="mt-3 text-xs leading-5 text-[#77857c]">Conversation is held only in this open page; it is not permanent memory.</p>
               </div>
             ) : (
-              <>
-                <div className="ml-auto max-w-[88%] rounded-2xl rounded-br-md bg-[#123D2B] px-4 py-3 text-sm leading-6 text-white">
-                  <p>{question}</p>
-                  <span className="mt-1 block text-right text-[10px] text-[#c8dfd0]">Local preview · {language}</span>
-                </div>
-                <ErrorState title="AI service unavailable. Your question was not sent, and no answer was generated." />
-              </>
+              messages.map((message, index) =>
+                message.role === "user" ? (
+                  <div key={`user-${index}`} className="ml-auto max-w-[88%] rounded-2xl rounded-br-md bg-[#123D2B] px-4 py-3 text-sm leading-6 text-white">
+                    <p>{message.content}</p>
+                  </div>
+                ) : (
+                  <div key={`assistant-${index}`} className="mr-auto max-w-[92%] space-y-3 rounded-2xl rounded-bl-md border border-[#e1e9e3] bg-white px-4 py-3 text-sm leading-6 text-[#294535]">
+                    <p>{message.response.answer}</p>
+                    {message.response.key_points.length > 0 && (
+                      <ul className="list-disc space-y-1 pl-5 text-xs">
+                        {message.response.key_points.map((point) => <li key={point}>{point}</li>)}
+                      </ul>
+                    )}
+                    {message.response.recommendations.length > 0 && (
+                      <div className="rounded-xl bg-[#f7f9f7] p-3 text-xs"><p className="font-bold">General considerations</p><ul className="mt-1 list-disc pl-5">{message.response.recommendations.map((item) => <li key={item}>{item}</li>)}</ul></div>
+                    )}
+                    {message.response.warnings.length > 0 && (
+                      <div className="rounded-xl border border-[#f0dfb8] bg-[#fff9eb] p-3 text-xs text-[#735b24]">{message.response.warnings.join(" ")}</div>
+                    )}
+                    {message.response.sources.length > 0 && (
+                      <div className="border-t border-[#edf1ee] pt-3 text-[11px] text-[#748279]">
+                        <p className="font-bold text-[#456052]">Verified sources used</p>
+                        {message.response.sources.map((source, sourceIndex) => (
+                          <p key={`${source.name}-${sourceIndex}`}>{source.name}{source.arrival_date ? ` · arrival ${source.arrival_date}` : ""}{source.retrieved_at ? ` · retrieved ${new Date(source.retrieved_at).toLocaleString("en-IN")}` : ""}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ),
+              )
             )}
+            {loading && <LoadingState label="Sending question to AgriNex AI…" />}
+            {error && <ErrorState title={error} />}
           </div>
 
           <form onSubmit={handleSubmit} className="border-t border-[#edf1ee] bg-white p-3 sm:p-4">
@@ -87,49 +208,29 @@ export function AssistantPage() {
                   }
                 }}
                 rows={1}
-                placeholder="Ask a question (kept in this preview)"
+                maxLength={2000}
+                placeholder="Ask a farming question"
                 className="max-h-28 min-h-10 min-w-0 flex-1 resize-y bg-transparent px-2 py-2 text-sm leading-5 text-[#20372b] outline-none placeholder:text-[#97a39c]"
               />
-              <button type="button" disabled title="Voice input is not available in this phase" aria-label="Voice input unavailable" className="grid size-10 shrink-0 cursor-not-allowed place-items-center rounded-xl text-[#a2aca6] disabled:opacity-70"><Mic aria-hidden="true" className="size-[18px]" /></button>
-              <Button type="submit" disabled={!draft.trim()} aria-label="Show local question preview" className="size-10 shrink-0 rounded-xl p-0 disabled:cursor-not-allowed"><Send aria-hidden="true" className="size-4" /></Button>
+              <button type="button" disabled title="Voice input is not available in this phase" aria-label="Voice input unavailable" className="grid size-10 shrink-0 cursor-not-allowed place-items-center rounded-xl text-[#a2aca6]"><Mic aria-hidden="true" className="size-[18px]" /></button>
+              <Button type="submit" disabled={!draft.trim() || loading} aria-label="Send question" className="size-10 shrink-0 rounded-xl p-0"><Send aria-hidden="true" className="size-4" /></Button>
             </div>
-            <p className="mt-2 px-1 text-[10px] leading-4 text-[#849188]">Voice input is unavailable. Submitting only displays your message locally; no AI request is made.</p>
+            <p className="mt-2 px-1 text-[10px] leading-4 text-[#849188]">Voice input is unavailable. Conversation is not permanently stored.</p>
           </form>
         </Card>
 
         <aside className="grid min-w-0 gap-4">
           <Card className="p-4 sm:p-5">
-            <div className="mb-3 flex items-center justify-between gap-2"><h2 className="text-sm font-bold text-[#183b2b]">Suggested questions</h2><DemoBadge>EXAMPLES</DemoBadge></div>
+            <div className="mb-3 flex items-center gap-2"><Leaf aria-hidden="true" className="size-4 text-[#17834D]" /><h2 className="text-sm font-bold text-[#183b2b]">Suggested questions</h2></div>
             <div className="space-y-2">
-              {suggestedQuestions.map((text) => (
-                <button key={text} type="button" onClick={() => setDraft(text)} className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-[#e5ece7] bg-white p-3 text-left text-xs leading-5 text-[#496153] transition hover:border-[#9fc9aa] hover:bg-[#f8fcf8] focus-visible:outline-2 focus-visible:outline-[#17834D]">
-                  <CircleHelp aria-hidden="true" className="size-4 shrink-0 text-[#17834D]" />{text}
-                </button>
+              {suggestedQuestions[language].map((text) => (
+                <button key={text} type="button" onClick={() => setDraft(text)} className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-[#e5ece7] bg-white p-3 text-left text-xs leading-5 text-[#496153] transition hover:border-[#9fc9aa] hover:bg-[#f8fcf8] focus-visible:outline-2 focus-visible:outline-[#17834D]"><CircleHelp aria-hidden="true" className="size-4 shrink-0 text-[#17834D]" />{text}</button>
               ))}
             </div>
           </Card>
-
-          <Card className="p-4 sm:p-5">
-            <div className="mb-3 flex items-center gap-2"><Leaf aria-hidden="true" className="size-4 text-[#17834D]" /><h2 className="text-sm font-bold text-[#183b2b]">Future response format</h2></div>
-            <p className="mb-4 text-xs leading-5 text-[#758279]">Structured response components are visual placeholders only.</p>
-            <div className="space-y-3">
-              <div className="rounded-xl bg-[#f7f9f7] p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-[#86948b]">Answer text · placeholder</p><p className="mt-1 text-xs text-[#607268]">A sourced explanation would appear here.</p></div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-xl border border-[#e5ece7] p-3"><p className="text-[10px] font-semibold text-[#7b8980]">Metric card</p><p className="mt-1 text-xs font-bold text-[#41614c]">Unavailable</p></div>
-                <div className="rounded-xl border border-[#e5ece7] p-3"><p className="text-[10px] font-semibold text-[#7b8980]">Chart container</p><p className="mt-1 flex items-center gap-1 text-xs font-bold text-[#41614c]"><ChartNoAxesCombined aria-hidden="true" className="size-3.5" /> Placeholder</p></div>
-              </div>
-              <ul className="space-y-1 rounded-xl bg-[#f7f9f7] p-3 text-xs text-[#607268]"><li className="font-bold text-[#456052]">Recommendation list · placeholder</li><li className="flex gap-2"><Check aria-hidden="true" className="size-3.5 shrink-0 text-[#9ba79f]" />Verified recommendations unavailable</li></ul>
-              <div className="rounded-xl border border-dashed border-[#d8e2dc] p-3 text-[11px] leading-5 text-[#7a8880]">Source attribution placeholder · no sources connected</div>
-            </div>
-          </Card>
-
-          <Card className="p-4 sm:p-5">
-            <h2 className="mb-3 text-sm font-bold text-[#183b2b]">Interface states</h2>
-            <div className="space-y-2">
-              <LoadingState label="Loading state preview · no request running" />
-              <ErrorState title="Error state preview: AI service is not connected." />
-              <div className="flex items-center gap-2 text-[10px] text-[#829087]"><CloudSun aria-hidden="true" className="size-3.5" />Weather and market details are separate sample modules.</div>
-            </div>
+          <Card className="p-4 sm:p-5 text-xs leading-5 text-[#748279]">
+            <p className="font-bold text-[#456052]">Response safety</p>
+            <p className="mt-2">The assistant does not provide guaranteed yields, exact selling prices or exact pesticide/fertilizer doses. Consult a qualified local expert for field-specific decisions.</p>
           </Card>
         </aside>
       </div>
