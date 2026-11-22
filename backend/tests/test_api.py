@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from app.core.config import Settings
 from app.core.exceptions import ProviderError
 from app.integrations.providers import ProviderSet
+from app.integrations.markets import DataGovMarketProvider
 from app.main import app, create_app
 from app.schemas.weather import WeatherForecastRequest, WeatherForecastResponse
 
@@ -19,7 +20,6 @@ def test_unconfigured_integrations_return_explicit_service_unavailable() -> None
     client = TestClient(test_app)
     requests = [
         ("/api/v1/weather/forecast", {"location": {"latitude": 11.6643, "longitude": 78.146}}),
-        ("/api/v1/markets/search", {"commodity": "tomato"}),
         ("/api/v1/assistant/questions", {"question": "How do I identify this crop?", "language": "en"}),
     ]
 
@@ -71,6 +71,19 @@ def test_settings_reject_wildcard_cors_origins() -> None:
         Settings(allowed_origins=["*"])
 
 
+def test_market_api_key_missing_returns_clear_error() -> None:
+    test_app = create_app(
+        Settings(environment="test", data_gov_in_api_key=""),
+        ProviderSet(markets=DataGovMarketProvider(api_key="")),
+    )
+    response = TestClient(test_app).get(
+        "/api/v1/markets/prices",
+        params={"state": "Tamil Nadu", "district": "Salem"},
+    )
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "MARKET_API_KEY_MISSING"
+
+
 def test_openapi_exposes_versioned_operations() -> None:
     client = TestClient(app)
     response = client.get("/api/v1/openapi.json")
@@ -82,6 +95,11 @@ def test_openapi_exposes_versioned_operations() -> None:
     assert "/api/v1/weather/current" in paths
     assert "/api/v1/weather/hourly" in paths
     assert "/api/v1/markets/search" in paths
+    assert "/api/v1/markets/prices" in paths
+    assert "/api/v1/markets/commodities" in paths
+    assert "/api/v1/markets/geographies" in paths
+    assert "/api/v1/markets/summary" in paths
+    assert "/api/v1/markets/trends" in paths
     assert "/api/v1/assistant/questions" in paths
 
 

@@ -1,103 +1,232 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowDownRight, ArrowUpRight, ChartNoAxesCombined, Clock3, MapPin, Search, ShoppingBasket } from "lucide-react";
-import { MarketTrendChart } from "@/components/charts/intelligence-charts";
-import { Button } from "@/components/ui/button";
+import { useEffect, useMemo, useState } from "react";
+import { Clock3, MapPin, RefreshCw, ShoppingBasket } from "lucide-react";
+import { MarketComparisonChart } from "@/components/charts/intelligence-charts";
 import { Card } from "@/components/ui/card";
-import { ChartCard, DemoBadge, DemoSelect, PageHeader, SearchInput } from "@/components/ui/primitives";
+import { ChartCard, PageHeader, SearchInput } from "@/components/ui/primitives";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
+import {
+  fetchCommodities,
+  fetchGeographies,
+  fetchMarketPrices,
+  fetchMarketSummary,
+  type MarketPrice,
+  type MarketSummary,
+  type MarketSearchResponse,
+} from "@/lib/markets";
 
-const marketPrices = [
-  { crop: "Tomato", market: "Salem", price: 2450, unit: "₹/quintal", movement: "−₹40", direction: "down", updated: "Sample entry" },
-  { crop: "Tomato", market: "Erode", price: 2400, unit: "₹/quintal", movement: "+₹20", direction: "up", updated: "Sample entry" },
-  { crop: "Tomato", market: "Namakkal", price: 2370, unit: "₹/quintal", movement: "+₹10", direction: "up", updated: "Sample entry" },
-  { crop: "Onion", market: "Salem", price: 1850, unit: "₹/quintal", movement: "+₹30", direction: "up", updated: "Sample entry" },
-  { crop: "Onion", market: "Erode", price: 1790, unit: "₹/quintal", movement: "−₹15", direction: "down", updated: "Sample entry" },
-  { crop: "Maize", market: "Namakkal", price: 2180, unit: "₹/quintal", movement: "+₹0", direction: "up", updated: "Sample entry" },
-  { crop: "Turmeric", market: "Erode", price: 7250, unit: "₹/quintal", movement: "−₹50", direction: "down", updated: "Sample entry" },
-];
+function asNumber(value: number | string | null | undefined) {
+  if (value == null) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 export function MarketsPage() {
-  const [commodity, setCommodity] = useState("All commodities");
-  const [market, setMarket] = useState("All markets");
-  const [search, setSearch] = useState("");
+  const [state, setState] = useState("Tamil Nadu");
+  const [district, setDistrict] = useState("Salem");
+  const [market, setMarket] = useState("All");
+  const [commodity, setCommodity] = useState("Tomato");
+  const [search, setSearch] = useState("Tomato");
+  const [variety, setVariety] = useState("All");
+  const [grade, setGrade] = useState("All");
+  const [commodities, setCommodities] = useState<string[]>(["Tomato"]);
+  const [districts, setDistricts] = useState<string[]>(["Salem"]);
+  const [markets, setMarkets] = useState<string[]>([]);
+  const [data, setData] = useState<MarketSearchResponse | null>(null);
+  const [summary, setSummary] = useState<MarketSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const filteredPrices = useMemo(() => marketPrices.filter((item) => {
-    const matchesCommodity = commodity === "All commodities" || item.crop === commodity;
-    const matchesMarket = market === "All markets" || item.market === market;
-    const query = search.trim().toLowerCase();
-    const matchesSearch = !query || `${item.crop} ${item.market}`.toLowerCase().includes(query);
-    return matchesCommodity && matchesMarket && matchesSearch;
-  }), [commodity, market, search]);
+  async function load(nextCommodity = commodity) {
+    setLoading(true);
+    setError("");
+    try {
+      const [geographies, commodityList, prices] = await Promise.all([
+        fetchGeographies(state),
+        fetchCommodities(state),
+        fetchMarketPrices({
+          state,
+          district,
+          market,
+          commodity: nextCommodity,
+          variety,
+          grade,
+          limit: 100,
+        }),
+      ]);
+      setDistricts(geographies.districts);
+      setMarkets(geographies.markets);
+      setCommodities(commodityList.commodities);
+      setData(prices);
+
+      if (nextCommodity && prices.record_count) {
+        const summaryResponse = await fetchMarketSummary({
+          state,
+          district,
+          market,
+          commodity: nextCommodity,
+          variety,
+          grade,
+        });
+        setSummary(summaryResponse.summary);
+      } else {
+        setSummary(null);
+      }
+    } catch (caught) {
+      setData(null);
+      setSummary(null);
+      setError(caught instanceof Error ? caught.message : "Market data is currently unavailable.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void Promise.resolve().then(() => load("Tomato"));
+    // Initial load intentionally uses the default Tamil Nadu/Salem filters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const varieties = useMemo(
+    () => Array.from(new Set((data?.prices ?? []).map((record) => record.variety).filter((value): value is string => Boolean(value)))).sort(),
+    [data],
+  );
+  const grades = useMemo(
+    () => Array.from(new Set((data?.prices ?? []).map((record) => record.grade).filter((value): value is string => Boolean(value)))).sort(),
+    [data],
+  );
+
+  const chartData = (data?.prices ?? [])
+    .map((record) => ({
+      market: record.market,
+      modal: asNumber(record.modal_price_per_quintal) ?? 0,
+    }))
+    .filter((item) => item.modal > 0);
+
+  function applySearch() {
+    const nextCommodity = search.trim();
+    if (!nextCommodity) return;
+    setCommodity(nextCommodity);
+    void load(nextCommodity);
+  }
 
   return (
     <>
       <PageHeader
         eyebrow="Market intelligence"
-        title="Compare market prices"
-        description="Browse interface examples for commodity and market comparisons. All prices are fabricated demonstration values, not verified market information."
-        action={<span className="flex items-center gap-2 text-xs text-[#6e7c73]"><Clock3 aria-hidden="true" className="size-4" />Updated time unavailable</span>}
+        title="Compare mandi prices"
+        description="Genuine AGMARKNET / data.gov.in records. A configured API key is required; no estimated or sample market prices are shown."
+        action={
+          <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#dfe8e2] bg-white px-3.5 text-sm font-semibold text-[#42604e] disabled:opacity-60">
+            <RefreshCw aria-hidden="true" className={`size-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+          </button>
+        }
       />
 
       <Card className="mb-5 p-4 sm:p-5">
-        <div className="mb-3 flex flex-wrap items-center gap-2"><h2 className="text-sm font-bold text-[#183b2b]">Search and filter</h2><DemoBadge>LOCAL SAMPLE DATA</DemoBadge></div>
-        <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_minmax(160px,0.65fr)_minmax(160px,0.65fr)]">
-          <SearchInput value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search crops or markets" aria-label="Search demo market prices" />
-          <DemoSelect aria-label="Select commodity" value={commodity} onChange={(event) => setCommodity(event.target.value)}>
-            <option>All commodities</option><option>Tomato</option><option>Onion</option><option>Maize</option><option>Turmeric</option>
-          </DemoSelect>
-          <DemoSelect aria-label="Select market" value={market} onChange={(event) => setMarket(event.target.value)}>
-            <option>All markets</option><option>Salem</option><option>Erode</option><option>Namakkal</option>
-          </DemoSelect>
+        <div className="mb-3 flex items-center gap-2"><h2 className="text-sm font-bold text-[#183b2b]">Search and filter</h2></div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+          <div className="md:col-span-2">
+            <SearchInput value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") applySearch(); }} placeholder="Search commodity" aria-label="Search commodity" />
+          </div>
+          <label className="text-xs font-bold text-[#486056]">State
+            <input value={state} onChange={(event) => setState(event.target.value)} className="mt-1.5 min-h-11 w-full rounded-xl border border-[#dfe8e2] px-3 text-sm outline-none" />
+          </label>
+          <label className="text-xs font-bold text-[#486056]">District
+            <select value={district} onChange={(event) => setDistrict(event.target.value)} className="mt-1.5 min-h-11 w-full rounded-xl border border-[#dfe8e2] bg-white px-3 text-sm outline-none">
+              <option value="">All districts</option>
+              {[...new Set(["Salem", ...districts])].map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-bold text-[#486056]">Market
+            <select value={market} onChange={(event) => setMarket(event.target.value)} className="mt-1.5 min-h-11 w-full rounded-xl border border-[#dfe8e2] bg-white px-3 text-sm outline-none">
+              <option value="All">All markets</option>
+              {markets.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+          <button type="button" onClick={applySearch} className="min-h-11 self-end rounded-xl bg-[#17834D] px-4 text-sm font-bold text-white">Apply</button>
+          <label className="text-xs font-bold text-[#486056]">Commodity
+            <select value={commodity} onChange={(event) => { setCommodity(event.target.value); setSearch(event.target.value); }} className="mt-1.5 min-h-11 w-full rounded-xl border border-[#dfe8e2] bg-white px-3 text-sm outline-none">
+              {[...new Set(["Tomato", ...commodities])].map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-bold text-[#486056]">Variety
+            <select value={variety} onChange={(event) => setVariety(event.target.value)} className="mt-1.5 min-h-11 w-full rounded-xl border border-[#dfe8e2] bg-white px-3 text-sm outline-none">
+              <option value="All">All varieties</option>
+              {varieties.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-bold text-[#486056]">Grade
+            <select value={grade} onChange={(event) => setGrade(event.target.value)} className="mt-1.5 min-h-11 w-full rounded-xl border border-[#dfe8e2] bg-white px-3 text-sm outline-none">
+              <option value="All">All grades</option>
+              {grades.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
         </div>
-        <p className="mt-2 text-[11px] text-[#829087]">Filters run only against sample entries stored in this page.</p>
       </Card>
 
-      <div className="mb-5 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
-        <ChartCard title="Market price comparison" subtitle="Sample tomato modal values · ₹ per quintal · not actual market data">
-          <div className="mb-3 flex flex-wrap gap-3 text-[11px] text-[#68796f]">
-            {[["#17834D", "Salem"], ["#77a6c1", "Erode"], ["#d3a548", "Namakkal"]].map(([color, label]) => <span key={label} className="flex items-center gap-1.5"><span className="size-2 rounded-full" style={{ backgroundColor: color }} />{label} · demo</span>)}
-          </div>
-          <MarketTrendChart commodity={commodity === "All commodities" ? "Tomato" : commodity} />
-          <p className="mt-1 flex items-center gap-2 text-[11px] text-[#829087]"><ChartNoAxesCombined aria-hidden="true" className="size-3.5" />Illustrative trend values · source not connected</p>
-        </ChartCard>
-
-        <Card className="p-5">
-          <div className="mb-4 flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-[#fff4dd] text-[#9b741f]"><ShoppingBasket aria-hidden="true" className="size-[18px]" /></span><div><h2 className="text-sm font-bold text-[#183b2b]">Price trend preview</h2><p className="text-[11px] text-[#829087]">Values are for UI demonstration only</p></div></div>
-          <div className="rounded-2xl bg-[#f7f9f7] p-4">
-            <div className="flex items-start justify-between gap-2"><div><p className="text-xs font-semibold text-[#6f7e75]">Tomato · Salem</p><p className="mt-2 text-3xl font-extrabold tracking-tight text-[#183b2b]">₹2,450</p><p className="mt-1 text-[11px] text-[#829087]">Per quintal · DEMO</p></div><DemoBadge>DEMO</DemoBadge></div>
-            <div className="mt-4 flex items-center gap-2 border-t border-[#e6ece7] pt-3 text-xs"><span className="inline-flex items-center gap-1 font-bold text-[#946c27]"><ArrowDownRight aria-hidden="true" className="size-4" /> ₹40</span><span className="text-[#829087]">vs previous sample entry</span></div>
-          </div>
-          <div className="mt-4 space-y-3 text-xs text-[#6e7c73]">
-            <p className="flex items-center justify-between gap-2"><span>Market source</span><strong className="text-[#456052]">Placeholder</strong></p>
-            <p className="flex items-center justify-between gap-2"><span>Last updated</span><strong className="text-[#456052]">Not available</strong></p>
-            <p className="flex items-center justify-between gap-2"><span>Price type</span><strong className="text-[#456052]">Modal · sample</strong></p>
-          </div>
-        </Card>
-      </div>
-
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2"><h2 className="text-base font-bold text-[#183b2b]">Market price cards</h2><DemoBadge /></div>
-        <span className="text-xs text-[#7b8980]">{filteredPrices.length} sample {filteredPrices.length === 1 ? "entry" : "entries"}</span>
-      </div>
-      {filteredPrices.length ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredPrices.map((item) => {
-            const TrendIcon = item.direction === "up" ? ArrowUpRight : ArrowDownRight;
-            return (
-              <Card key={`${item.crop}-${item.market}`} className="p-4 sm:p-5">
-                <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold text-[#183b2b]">{item.crop}</p><p className="mt-1 flex items-center gap-1 text-xs text-[#758279]"><MapPin aria-hidden="true" className="size-3.5" />{item.market} market · sample</p></div><DemoBadge /></div>
-                <div className="mt-4 flex items-end justify-between gap-2"><div><p className="text-2xl font-extrabold tracking-tight text-[#193c2b]">₹{item.price.toLocaleString("en-IN")}</p><p className="mt-1 text-[11px] text-[#829087]">{item.unit} · demo</p></div><span className="inline-flex items-center gap-1 rounded-lg bg-[#f5f8f5] px-2 py-1 text-xs font-semibold text-[#587064]"><TrendIcon aria-hidden="true" className="size-3.5" />{item.movement} sample</span></div>
-                <p className="mt-4 border-t border-[#edf1ee] pt-3 text-[10px] text-[#829087]">Source and updated time: {item.updated.toLowerCase()} · no live provider</p>
-              </Card>
-            );
-          })}
+      {loading && <LoadingState label="Loading verified mandi records…" />}
+      {error && (
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start">
+          <ErrorState title={error} />
+          <button type="button" onClick={() => void load()} className="min-h-11 rounded-xl border border-[#17834D] px-4 text-sm font-bold text-[#17834D]">Retry</button>
         </div>
-      ) : (
-        <Card className="p-8 text-center"><Search aria-hidden="true" className="mx-auto mb-2 size-5 text-[#829087]" /><p className="text-sm font-semibold text-[#456052]">No sample entries match these filters.</p><Button variant="secondary" className="mt-4" onClick={() => { setSearch(""); setMarket("All markets"); setCommodity("All commodities"); }}>Clear filters</Button></Card>
       )}
 
-      <p className="mt-5 rounded-xl border border-[#f0dfb8] bg-[#fff9eb] p-4 text-xs leading-5 text-[#735b24]">Important: all prices, movements, markets and charts on this page are fictional UI demonstration data. They do not describe actual market activity or support a sell/hold decision.</p>
+      {!loading && !error && data && (
+        <>
+          {data.record_count === 0 ? (
+            <EmptyState title={`No AGMARKNET records returned for ${commodity} in ${district || state}.`} />
+          ) : (
+            <>
+              {summary && (
+                <section aria-label="Market comparison summary" className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <Card className="p-4"><p className="text-xs font-bold text-[#62756b]">Highest modal</p><p className="mt-2 text-xl font-extrabold text-[#183b2b]">{summary.highest_modal_price_per_quintal == null ? "—" : `₹${Number(summary.highest_modal_price_per_quintal).toLocaleString("en-IN")}`}</p><p className="mt-1 text-xs text-[#748279]">{summary.highest_modal_market || "No market"}</p></Card>
+                  <Card className="p-4"><p className="text-xs font-bold text-[#62756b]">Lowest modal</p><p className="mt-2 text-xl font-extrabold text-[#183b2b]">{summary.lowest_modal_price_per_quintal == null ? "—" : `₹${Number(summary.lowest_modal_price_per_quintal).toLocaleString("en-IN")}`}</p><p className="mt-1 text-xs text-[#748279]">{summary.lowest_modal_market || "No market"}</p></Card>
+                  <Card className="p-4"><p className="text-xs font-bold text-[#62756b]">Reported range</p><p className="mt-2 text-xl font-extrabold text-[#183b2b]">{summary.reported_price_range_per_quintal ? `₹${Number(summary.reported_price_range_per_quintal[0]).toLocaleString("en-IN")}–₹${Number(summary.reported_price_range_per_quintal[1]).toLocaleString("en-IN")}` : "—"}</p><p className="mt-1 text-xs text-[#748279]">Per quintal</p></Card>
+                  <Card className="p-4"><p className="text-xs font-bold text-[#62756b]">Valid records / latest arrival</p><p className="mt-2 text-xl font-extrabold text-[#183b2b]">{summary.compatible_record_count}</p><p className="mt-1 text-xs text-[#748279]">{summary.latest_arrival_date || "No arrival date"}</p></Card>
+                </section>
+              )}
+
+              <div className="mb-5 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
+                <ChartCard title="Market modal prices" subtitle="Reported modal price · ₹ per quintal" demo={false}>
+                  <MarketComparisonChart data={chartData} />
+                </ChartCard>
+                <Card className="p-5">
+                  <div className="mb-4 flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-[#fff4dd] text-[#9b741f]"><ShoppingBasket aria-hidden="true" className="size-[18px]" /></span><div><h2 className="text-sm font-bold text-[#183b2b]">Source status</h2><p className="text-[11px] text-[#829087]">AGMARKNET / data.gov.in</p></div></div>
+                  <div className="space-y-3 text-xs text-[#6e7c73]">
+                    <p className="flex items-center justify-between gap-2"><span>Retrieved</span><strong className="text-right text-[#456052]">{new Date(data.retrieved_at).toLocaleString("en-IN")}</strong></p>
+                    <p className="flex items-center justify-between gap-2"><span>Latest arrival</span><strong className="text-[#456052]">{data.latest_arrival_date || "Not returned"}</strong></p>
+                    <p className="flex items-center justify-between gap-2"><span>Record status</span><strong className={data.stale ? "text-[#9b741f]" : "text-[#17834D]"}>{data.stale ? "Stale arrival date" : "Reported arrival date"}</strong></p>
+                    <a href={data.source.source_url || "https://data.gov.in"} target="_blank" rel="noreferrer" className="block text-[#17834D] underline">Official data.gov.in catalog</a>
+                  </div>
+                </Card>
+              </div>
+
+              <div className="mb-3 flex items-center justify-between"><h2 className="text-base font-bold text-[#183b2b]">Market price records</h2><span className="text-xs text-[#7b8980]">{data.record_count} valid records</span></div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {data.prices.map((record: MarketPrice) => {
+                  const modal = asNumber(record.modal_price_per_quintal);
+                  const minimum = asNumber(record.min_price_per_quintal);
+                  const maximum = asNumber(record.max_price_per_quintal);
+                  return (
+                    <Card key={`${record.market}-${record.commodity}-${record.variety}-${record.arrival_date}`} className="p-4 sm:p-5">
+                      <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold text-[#183b2b]">{record.commodity}</p><p className="mt-1 flex items-center gap-1 text-xs text-[#758279]"><MapPin aria-hidden="true" className="size-3.5" />{record.market}, {record.district}</p></div>{record.stale && <span className="rounded-full bg-[#fff4dd] px-2 py-1 text-[10px] font-bold text-[#795c18]">STALE</span>}</div>
+                      <p className="mt-4 text-2xl font-extrabold text-[#183b2b]">{modal == null ? "Unavailable" : `₹${modal.toLocaleString("en-IN")}`}</p>
+                      <p className="mt-1 text-[11px] text-[#829087]">Modal · INR per quintal</p>
+                      <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#edf1ee] pt-3 text-[11px] text-[#6e7c73]"><span>Minimum <strong className="block text-[#456052]">{minimum == null ? "Not reported" : `₹${minimum.toLocaleString("en-IN")}`}</strong></span><span>Maximum <strong className="block text-[#456052]">{maximum == null ? "Not reported" : `₹${maximum.toLocaleString("en-IN")}`}</strong></span></div>
+                      <p className="mt-3 flex items-center gap-1 text-[10px] text-[#829087]"><Clock3 aria-hidden="true" size={12} />Arrival: {record.arrival_date}</p>
+                    </Card>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          <p className="mt-5 rounded-xl border border-[#f0dfb8] bg-[#fff9eb] p-4 text-xs leading-5 text-[#735b24]">A high or low reported modal price is a market observation, not a guaranteed earning or selling recommendation. Transport, quality, fees and final sale terms are not represented.</p>
+        </>
+      )}
     </>
   );
 }

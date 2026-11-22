@@ -13,6 +13,7 @@ from app.core.config import Settings, get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging, request_id_context
 from app.integrations.providers import ProviderSet
+from app.integrations.markets import DataGovMarketProvider
 from app.integrations.weather import OpenMeteoWeatherProvider
 from app.schemas.markets import MarketSearchResponse
 from app.schemas.weather import WeatherForecastResponse
@@ -30,7 +31,13 @@ def create_app(
         weather=OpenMeteoWeatherProvider(
             base_url=app_settings.open_meteo_base_url,
             timeout_seconds=app_settings.provider_timeout_seconds,
-        )
+        ),
+        markets=DataGovMarketProvider(
+            api_key=app_settings.data_gov_in_api_key,
+            base_url=app_settings.data_gov_in_base_url,
+            timeout_seconds=app_settings.provider_timeout_seconds,
+            resource_id=app_settings.data_gov_in_resource_id,
+        ),
     )
     logger = configure_logging(app_settings.log_level)
 
@@ -40,7 +47,7 @@ def create_app(
             "Versioned, provider-independent API foundation for AgriNex AI. "
             "External data and AI integrations remain unconfigured until later phases."
         ),
-        version="0.4.0",
+        version="0.5.0",
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url=f"{app_settings.api_v1_prefix}/openapi.json",
@@ -66,7 +73,7 @@ def create_app(
             max_entries=app_settings.cache_max_entries,
         ),
         timeout_seconds=app_settings.provider_timeout_seconds,
-        cache_ttl_seconds=app_settings.cache_ttl_seconds,
+        cache_ttl_seconds=app_settings.market_cache_ttl_seconds,
     )
     app.state.assistant_service = AssistantService(
         provider=integrations.gemini,

@@ -8,6 +8,10 @@ The API exposes `GET /api/v1/health`, `GET /api/v1/weather/current`, `GET /api/v
 
 Open-Meteo requests use `latitude`, `longitude`, `forecast_days=1-7`, `timezone=Asia/Kolkata`, Celsius, km/h, mm, and only the required current/daily/hourly variables. The response is parsed into typed Pydantic models and attributed to Open-Meteo with a retrieval timestamp. The provider host is fixed by configuration validation to `https://api.open-meteo.com`; arbitrary or user-controlled hosts are not accepted.
 
+## Phase 05 market provider
+
+Phase 05 uses the official data.gov.in AGMARKNET resource `9ef84268-d588-465a-a308-a864a43d0070` on `https://api.data.gov.in`. An authorized `DATA_GOV_IN_API_KEY` is mandatory and remains in the FastAPI environment. The provider uses server-side fixed filters and bounded pagination, validates arrival dates and decimal prices, and normalizes only rupees-per-quintal records. Missing, malformed, or cross-unit records are rejected rather than corrected or filled. No stale successful response is used to replace a failed upstream call; cache entries are valid for 900 seconds and identify old arrival dates explicitly.
+
 The Phase 02 frontend provides `/` and `/dashboard`, `/assistant`, `/weather`, `/markets`, `/crops`, `/farms`, `/advisories`, and `/settings`. Its weather, market, crop, and farm content remains illustrative demonstration data. No external source, database, AI, or voice integration is active in the frontend.
 
 ## Persistence and retrieval decision

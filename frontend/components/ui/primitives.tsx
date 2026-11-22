@@ -41,6 +41,7 @@ export interface MetricCardProps {
   detail: string;
   icon: LucideIcon;
   accent?: "green" | "blue" | "amber" | "violet";
+  demo?: boolean;
 }
 
 const accentStyles = {
@@ -50,7 +51,7 @@ const accentStyles = {
   violet: "bg-[#f0eafa] text-[#7252a3]",
 };
 
-export function MetricCard({ label, value, detail, icon: Icon, accent = "green" }: MetricCardProps) {
+export function MetricCard({ label, value, detail, icon: Icon, accent = "green", demo = true }: MetricCardProps) {
   return (
     <Card className="min-w-0 p-4 sm:p-5">
       <div className="flex items-start justify-between gap-2">
@@ -61,7 +62,7 @@ export function MetricCard({ label, value, detail, icon: Icon, accent = "green" 
       </div>
       <p className="mt-3 truncate text-2xl font-extrabold tracking-tight text-[#12271c] sm:text-[27px]">{value}</p>
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-        <DemoBadge>DEMO</DemoBadge>
+        {demo && <DemoBadge>DEMO</DemoBadge>}
         <span className="text-[11px] leading-4 text-[#738279]">{detail}</span>
       </div>
     </Card>
@@ -74,12 +75,14 @@ export function ChartCard({
   children,
   action,
   className = "",
+  demo = true,
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
   action?: ReactNode;
   className?: string;
+  demo?: boolean;
 }) {
   return (
     <Card className={`min-w-0 overflow-hidden p-4 sm:p-5 ${className}`}>
@@ -87,7 +90,7 @@ export function ChartCard({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-[15px] font-bold text-[#183b2b]">{title}</h2>
-            <DemoBadge>DEMO</DemoBadge>
+            {demo && <DemoBadge>DEMO</DemoBadge>}
           </div>
           {subtitle && <p className="mt-1 text-xs leading-5 text-[#758279]">{subtitle}</p>}
         </div>

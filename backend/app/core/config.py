@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     cache_max_entries: int = Field(default=512, ge=1, le=100_000)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     open_meteo_base_url: str = "https://api.open-meteo.com"
+    data_gov_in_api_key: str = ""
+    data_gov_in_resource_id: str = "9ef84268-d588-465a-a308-a864a43d0070"
+    data_gov_in_base_url: str = "https://api.data.gov.in"
+    market_cache_ttl_seconds: float = Field(default=900, ge=0, le=86_400, allow_inf_nan=False)
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -40,6 +44,23 @@ class Settings(BaseSettings):
         if parsed.path:
             raise ValueError("OPEN_METEO_BASE_URL must not contain a path")
         return value.strip().rstrip("/")
+
+    @field_validator("data_gov_in_base_url")
+    @classmethod
+    def validate_data_gov_url(cls, value: str) -> str:
+        parsed = urlsplit(value.strip().rstrip("/"))
+        if parsed.scheme != "https" or parsed.netloc != "api.data.gov.in":
+            raise ValueError("DATA_GOV_IN_BASE_URL must use the official api.data.gov.in host")
+        if parsed.path:
+            raise ValueError("DATA_GOV_IN_BASE_URL must not contain a path")
+        return value.strip().rstrip("/")
+
+    @field_validator("data_gov_in_resource_id")
+    @classmethod
+    def validate_market_resource_id(cls, value: str) -> str:
+        if value != "9ef84268-d588-465a-a308-a864a43d0070":
+            raise ValueError("DATA_GOV_IN_RESOURCE_ID must match the verified AGMARKNET resource")
+        return value
 
     @field_validator("allowed_origins")
     @classmethod

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  ArrowDownRight,
   ArrowRight,
   ArrowUpRight,
   Bot,
@@ -16,10 +15,11 @@ import {
   Sprout,
   Wind,
 } from "lucide-react";
-import { MarketTrendChart, RainfallChart, TemperatureChart } from "@/components/charts/intelligence-charts";
+import { RainfallChart, TemperatureChart } from "@/components/charts/intelligence-charts";
 import { Card } from "@/components/ui/card";
 import { ChartCard, DemoBadge, MetricCard, PageHeader, SectionTitle } from "@/components/ui/primitives";
 import { fetchWeather, SALEM_LOCATION, type WeatherData } from "@/lib/weather";
+import { fetchMarketPrices, type MarketPrice } from "@/lib/markets";
 
 const quickActions = [
   { href: "/assistant", label: "Ask AI", description: "Explore the assistant preview", icon: Bot, tone: "bg-[#e6f4ea] text-[#17834D]" },
@@ -31,6 +31,8 @@ const quickActions = [
 export function DashboardPage() {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherError, setWeatherError] = useState("");
+  const [market, setMarket] = useState<MarketPrice | null>(null);
+  const [marketError, setMarketError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -52,6 +54,28 @@ export function DashboardPage() {
       })
       .catch(() => {
         if (active) setWeatherError("Live weather is unavailable.");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void fetchMarketPrices({
+      state: "Tamil Nadu",
+      district: "Salem",
+      limit: 20,
+      commodity: "Tomato",
+    })
+      .then((data) => {
+        if (active) setMarket(data.prices[0] ?? null);
+      })
+      .catch((caught) => {
+        if (active) {
+          setMarket(null);
+          setMarketError(caught instanceof Error ? caught.message : "Live market data is unavailable.");
+        }
       });
     return () => {
       active = false;
@@ -112,10 +136,10 @@ export function DashboardPage() {
       </Card>
 
       <section aria-label="Farm overview metrics" className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <MetricCard label="Current temperature" value={temperature == null ? "Unavailable" : `${Math.round(temperature)}°C`} detail={weather ? "Salem · live" : "Weather service"} icon={CloudSun} accent="amber" />
-        <MetricCard label="Rain probability" value={rainProbability == null ? "Unavailable" : `${Math.round(rainProbability)}%`} detail={weather ? "Today · live forecast" : "Weather service"} icon={CloudRain} accent="blue" />
+        <MetricCard label="Current temperature" value={temperature == null ? "Unavailable" : `${Math.round(temperature)}°C`} detail={weather ? "Salem · live" : "Weather service"} icon={CloudSun} accent="amber" demo={false} />
+        <MetricCard label="Rain probability" value={rainProbability == null ? "Unavailable" : `${Math.round(rainProbability)}%`} detail={weather ? "Today · live forecast" : "Weather service"} icon={CloudRain} accent="blue" demo={false} />
         <MetricCard label="Active crops" value="3 crops" detail="Sample farm profile" icon={Sprout} />
-        <MetricCard label="Tomato modal price" value="₹2,450" detail="Per quintal · demo" icon={ShoppingBasket} accent="violet" />
+        <MetricCard label="Tomato modal price" value={market?.modal_price_per_quintal == null ? "Unavailable" : `₹${Number(market.modal_price_per_quintal).toLocaleString("en-IN")}`} detail={market ? `${market.market} · arrival ${market.arrival_date}` : "Live market service"} icon={ShoppingBasket} accent="violet" demo={false} />
       </section>
 
       <section aria-labelledby="quick-actions-title" className="mb-6">
@@ -133,7 +157,7 @@ export function DashboardPage() {
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.85fr)]">
         <div className="grid min-w-0 gap-4">
-          <ChartCard title="Weather outlook" subtitle={weather ? "Seven-day temperature forecast · live" : "Seven-day temperature forecast · unavailable"} action={<Link href="/weather" className="inline-flex items-center gap-1 text-xs font-bold text-[#17834D]">Details <ArrowRight aria-hidden="true" className="size-3.5" /></Link>}>
+          <ChartCard title="Weather outlook" subtitle={weather ? "Seven-day temperature forecast · live" : "Seven-day temperature forecast · unavailable"} demo={false} action={<Link href="/weather" className="inline-flex items-center gap-1 text-xs font-bold text-[#17834D]">Details <ArrowRight aria-hidden="true" className="size-3.5" /></Link>}>
             <div className="mb-3 flex flex-wrap gap-3 text-[11px] font-medium text-[#68796f]">
               <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-[#17834D]" /> High temperature{weather ? "" : " · unavailable"}</span>
               <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-[#79aabd]" /> Low temperature{weather ? "" : " · unavailable"}</span>
@@ -141,7 +165,7 @@ export function DashboardPage() {
             {chartData.length ? <TemperatureChart compact data={chartData} /> : <p className="rounded-xl bg-[#f7f9f7] p-4 text-xs text-[#748279]">{weatherError || "Loading live weather…"}</p>}
           </ChartCard>
 
-          <ChartCard title="Rain probability" subtitle="Sample forecast probability by day">
+          <ChartCard title="Rain probability" subtitle={weather ? "Live forecast probability by day" : "Live forecast unavailable"} demo={false}>
             {chartData.length ? <RainfallChart data={chartData} /> : <p className="rounded-xl bg-[#f7f9f7] p-4 text-xs text-[#748279]">{weatherError || "Loading live weather…"}</p>}
           </ChartCard>
         </div>
@@ -166,14 +190,18 @@ export function DashboardPage() {
             <p className="mt-4 rounded-xl bg-[#f7f9f7] px-3 py-2.5 text-[11px] leading-5 text-[#748279]">{weather?.source.source_name ? `${weather.source.source_name} · ${weather.timezone}` : weatherError || "Connecting to weather service…"}</p>
           </Card>
 
-          <ChartCard title="Market snapshot" subtitle="Illustrative modal prices · ₹ per quintal" action={<Link href="/markets" className="text-xs font-bold text-[#17834D]">Compare →</Link>}>
-            <MarketTrendChart />
-            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[#edf1ee] pt-3 text-xs">
-              <span className="font-bold text-[#254632]">Tomato · Salem</span>
-              <span className="font-semibold text-[#17834D]">₹2,450/qtl</span>
-              <span className="inline-flex items-center text-[#68796f]"><ArrowDownRight aria-hidden="true" className="size-3.5" /> ₹40 vs prior sample</span>
-            </div>
-          </ChartCard>
+          <Card className="p-5">
+            <div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="text-[15px] font-bold text-[#183b2b]">Market snapshot</h2><p className="mt-1 text-xs text-[#758279]">AGMARKNET / data.gov.in</p></div><Link href="/markets" className="text-xs font-bold text-[#17834D]">Compare →</Link></div>
+            {market ? (
+              <div>
+                <p className="text-sm font-bold text-[#254632]">{market.commodity} · {market.market}</p>
+                <p className="mt-2 text-2xl font-extrabold text-[#17834D]">₹{Number(market.modal_price_per_quintal).toLocaleString("en-IN")}/quintal</p>
+                <p className="mt-1 text-xs text-[#68796f]">Arrival: {market.arrival_date}{market.stale ? " · stale arrival date" : ""}</p>
+              </div>
+            ) : (
+              <p className="rounded-xl bg-[#f7f9f7] p-3 text-xs text-[#748279]">{marketError || "Loading live market data…"}</p>
+            )}
+          </Card>
 
           <Card style={{ backgroundColor: "#fafffb" }} className="border-[#dfece2] p-5">
             <div className="mb-3 flex flex-wrap items-center gap-2">

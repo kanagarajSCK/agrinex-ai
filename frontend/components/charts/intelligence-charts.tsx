@@ -111,3 +111,24 @@ export function MarketTrendChart({ commodity = "Tomato" }: { commodity?: string 
     </div>
   );
 }
+
+export function MarketComparisonChart({
+  data,
+}: {
+  data: Array<{ market: string; modal: number }>;
+}) {
+  if (!data.length) return null;
+  return (
+    <div className="h-[236px] w-full min-w-0 sm:h-[280px]">
+      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1} initialDimension={{ width: 300, height: 260 }}>
+        <BarChart data={data} margin={{ top: 10, right: 8, left: -12, bottom: 0 }}>
+          <CartesianGrid stroke="#edf2ee" strokeDasharray="3 4" vertical={false} />
+          <XAxis dataKey="market" axisLine={false} tickLine={false} tick={{ fill: "#829087", fontSize: 10 }} />
+          <YAxis tickFormatter={(value: number) => `₹${value}`} tick={{ fill: "#829087", fontSize: 10 }} axisLine={false} tickLine={false} width={62} />
+          <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`₹${value}/quintal`, "Reported modal price"]} />
+          <Bar dataKey="modal" name="Modal price" fill="#17834D" radius={[5, 5, 0, 0]} maxBarSize={36} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}

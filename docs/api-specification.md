@@ -47,6 +47,19 @@ Required query parameters: `latitude` and `longitude`. Returns the Open-Meteo se
 
 Compatibility route using typed `WeatherForecastRequest` with a coordinate pair and optional `days` from 1 to 7. City-only location requests are not geocoded in this phase and return validation errors.
 
+## AGMARKNET market endpoints
+
+- `GET /markets/commodities`: commodities actually represented in returned upstream records.
+- `GET /markets/geographies`: states, districts, and markets actually represented in returned upstream records.
+- `GET /markets/prices`: genuine data.gov.in records, with optional state, district, market, commodity, variety, grade, arrival-date, limit, and offset filters.
+- `GET /markets/summary`: factual highest, lowest, range, record count, and latest arrival date for compatible rupees-per-quintal records.
+- `GET /markets/trends`: explicitly reports trend availability as false until genuine verified historical records are supported.
+- `POST /markets/search`: compatibility route with typed market filters.
+
+Market prices remain in INR per quintal. `arrival_date` is the source-reported market arrival date; `retrieved_at` is the time AgriNex retrieved the provider response. `stale` means the latest arrival date is earlier than the current Asia/Kolkata date, not merely that a cache entry exists. Missing or invalid modal, ordering, numeric, or unit values are excluded. Different units are not mixed or converted.
+
+Without `DATA_GOV_IN_API_KEY`, mandi requests return `503 MARKET_API_KEY_MISSING`. A real upstream 4xx/5xx or timeout returns a safe 502/504; HTTP and provider failures are not cached as successful market data.
+
 ### `POST /markets/search`
 
 Request: `MarketSearchRequest` with a commodity, optional market/location, and optional result limit. Returns `503 INTEGRATION_NOT_CONFIGURED` until a mandi provider is selected and configured.

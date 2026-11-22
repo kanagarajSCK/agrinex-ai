@@ -16,6 +16,15 @@ class IntegrationNotConfiguredError(AppError):
         super().__init__()
 
 
+class MarketApiKeyMissingError(AppError):
+    status_code = 503
+    code = "MARKET_API_KEY_MISSING"
+
+    def __init__(self) -> None:
+        self.public_message = "The data.gov.in API key is not configured."
+        super().__init__()
+
+
 class ProviderTimeoutError(AppError):
     status_code = 504
     code = "PROVIDER_TIMEOUT"

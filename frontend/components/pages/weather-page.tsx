@@ -179,10 +179,10 @@ export function WeatherPage() {
           </Card>
 
           <section aria-label="Weather metrics" className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <MetricCard label="Humidity" value={current.humidity_percent == null ? "—" : `${Math.round(current.humidity_percent)}%`} detail="Relative humidity" icon={Droplets} accent="blue" />
-            <MetricCard label="Wind speed" value={current.wind_speed_kph == null ? "—" : `${Math.round(current.wind_speed_kph)} km/h`} detail={current.wind_direction_deg == null ? "Open-Meteo" : `Direction ${Math.round(current.wind_direction_deg)}°`} icon={Wind} accent="blue" />
-            <MetricCard label="Precipitation" value={current.precipitation_mm == null ? "—" : `${current.precipitation_mm} mm`} detail="Current precipitation" icon={CloudRain} accent="green" />
-            <MetricCard label="High / low" value={weather.forecast[0]?.high_c == null || weather.forecast[0]?.low_c == null ? "—" : `${Math.round(weather.forecast[0].high_c)}° / ${Math.round(weather.forecast[0].low_c)}°`} detail="Today · °C" icon={CloudSun} accent="amber" />
+            <MetricCard label="Humidity" value={current.humidity_percent == null ? "—" : `${Math.round(current.humidity_percent)}%`} detail="Relative humidity" icon={Droplets} accent="blue" demo={false} />
+            <MetricCard label="Wind speed" value={current.wind_speed_kph == null ? "—" : `${Math.round(current.wind_speed_kph)} km/h`} detail={current.wind_direction_deg == null ? "Open-Meteo" : `Direction ${Math.round(current.wind_direction_deg)}°`} icon={Wind} accent="blue" demo={false} />
+            <MetricCard label="Precipitation" value={current.precipitation_mm == null ? "—" : `${current.precipitation_mm} mm`} detail="Current precipitation" icon={CloudRain} accent="green" demo={false} />
+            <MetricCard label="High / low" value={weather.forecast[0]?.high_c == null || weather.forecast[0]?.low_c == null ? "—" : `${Math.round(weather.forecast[0].high_c)}° / ${Math.round(weather.forecast[0].low_c)}°`} detail="Today · °C" icon={CloudSun} accent="amber" demo={false} />
           </section>
 
           {weather.forecast.length > 0 ? (
@@ -202,10 +202,10 @@ export function WeatherPage() {
           ) : <EmptyState title="No daily forecast values were returned." />}
 
           <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-            <ChartCard title="Temperature trend" subtitle="High and low temperatures · °C">
+            <ChartCard title="Temperature trend" subtitle="High and low temperatures · °C" demo={false}>
               {chartData.length ? <TemperatureChart compact data={chartData} /> : <EmptyState title="No temperature chart values." />}
             </ChartCard>
-            <ChartCard title="Rain probability" subtitle="Maximum precipitation probability by day · %">
+            <ChartCard title="Rain probability" subtitle="Maximum precipitation probability by day · %" demo={false}>
               {chartData.length ? <RainfallChart data={chartData} /> : <EmptyState title="No rainfall probability values." />}
             </ChartCard>
           </div>
