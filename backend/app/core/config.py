@@ -82,6 +82,26 @@ class Settings(BaseSettings):
 
         return str((BACKEND_DIR / path).resolve())
 
+    @field_validator("data_gov_in_api_key", mode="before")
+    @classmethod
+    def clean_data_gov_api_key(cls, value: Any) -> str:
+        if isinstance(value, str):
+            cleaned = value.strip().strip("\"'").strip()
+            if cleaned == "your-datagov-api-key-here":
+                return ""
+            return cleaned
+        return ""
+
+    @field_validator("gemini_api_key", mode="before")
+    @classmethod
+    def clean_gemini_api_key(cls, value: Any) -> str:
+        if isinstance(value, str):
+            cleaned = value.strip().strip("\"'").strip()
+            if cleaned == "your-gemini-api-key-here":
+                return ""
+            return cleaned
+        return ""
+
     @field_validator("api_v1_prefix")
     @classmethod
     def validate_api_prefix(cls, value: str) -> str:

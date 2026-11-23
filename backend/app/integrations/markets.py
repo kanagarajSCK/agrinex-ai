@@ -43,7 +43,7 @@ class DataGovMarketProvider:
         transport: httpx.AsyncBaseTransport | None = None,
         resource_id: str = RESOURCE_ID,
     ) -> None:
-        self._api_key = api_key.strip()
+        self._api_key = api_key.strip().strip("\"'").strip()
         self._base_url = base_url.rstrip("/")
         self._timeout_seconds = timeout_seconds
         self._transport = transport
@@ -53,7 +53,7 @@ class DataGovMarketProvider:
         self,
         request: MarketSearchRequest,
     ) -> MarketSearchResponse:
-        if not self._api_key:
+        if not self._api_key or self._api_key == "your-datagov-api-key-here":
             raise MarketApiKeyMissingError()
 
         retrieved_at = datetime.now(ZoneInfo("Asia/Kolkata"))
@@ -98,10 +98,21 @@ class DataGovMarketProvider:
                     payload = response.json()
             except httpx.TimeoutException as exc:
                 raise ProviderTimeoutError("data.gov.in") from exc
-            except (httpx.HTTPStatusError, httpx.RequestError) as exc:
-                raise ProviderError("data.gov.in") from exc
+            except httpx.HTTPStatusError as exc:
+                status = exc.response.status_code
+                if status in (401, 403):
+                    raise ProviderError(
+                        "data.gov.in",
+                        f"HTTP {status} (Key not authorised or rejected by data.gov.in. Please check DATA_GOV_IN_API_KEY in Render environment variables)",
+                    ) from exc
+                raise ProviderError("data.gov.in", f"HTTP {status}") from exc
+            except httpx.RequestError as exc:
+                raise ProviderError(
+                    "data.gov.in",
+                    f"Connection failed ({type(exc).__name__})",
+                ) from exc
             except (httpx.DecodingError, ValueError) as exc:
-                raise ProviderError("data.gov.in") from exc
+                raise ProviderError("data.gov.in", "Upstream returned non-JSON response") from exc
 
             if not isinstance(payload, dict):
                 raise ProviderError("data.gov.in")

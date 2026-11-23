@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Clock3, MapPin, RefreshCw, ShoppingBasket } from "lucide-react";
 import { MarketComparisonChart } from "@/components/charts/intelligence-charts";
 import { Card } from "@/components/ui/card";
 import { ChartCard, PageHeader, SearchInput } from "@/components/ui/primitives";
-import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
+import { EmptyState, LoadingState } from "@/components/ui/states";
 import {
   fetchCommodities,
   fetchGeographies,
@@ -59,7 +60,7 @@ export function MarketsPage() {
     setLoading(true);
     setError("");
     try {
-      const [geographies, commodityList, prices] = await Promise.all([
+      const [geoRes, commRes, priceRes] = await Promise.allSettled([
         fetchGeographies(nextState),
         fetchCommodities(nextState),
         fetchMarketPrices({
@@ -72,28 +73,54 @@ export function MarketsPage() {
           limit: 100,
         }),
       ]);
-      setDistricts(geographies.districts);
-      setMarkets(geographies.markets);
-      setCommodities(commodityList.commodities);
-      setData(prices);
 
-      if (nextCommodity && prices.record_count) {
-        const summaryResponse = await fetchMarketSummary({
-          state: nextState,
-          district: nextDistrict,
-          market,
-          commodity: nextCommodity,
-          variety,
-          grade,
-        });
-        setSummary(summaryResponse.summary);
+      if (geoRes.status === "fulfilled") {
+        setDistricts(geoRes.value.districts);
+        setMarkets(geoRes.value.markets);
+      }
+      if (commRes.status === "fulfilled") {
+        setCommodities(commRes.value.commodities);
+      }
+
+      if (priceRes.status === "fulfilled") {
+        const prices = priceRes.value;
+        setData(prices);
+
+        if (nextCommodity && prices.record_count) {
+          try {
+            const summaryResponse = await fetchMarketSummary({
+              state: nextState,
+              district: nextDistrict,
+              market,
+              commodity: nextCommodity,
+              variety,
+              grade,
+            });
+            setSummary(summaryResponse.summary);
+          } catch {
+            setSummary(null);
+          }
+        } else {
+          setSummary(null);
+        }
       } else {
+        const reason = priceRes.reason;
+        const errMsg =
+          reason instanceof Error
+            ? reason.message
+            : "Market data is currently unavailable.";
+        setData(null);
         setSummary(null);
+        setError(errMsg);
       }
     } catch (caught) {
       setData(null);
       setSummary(null);
-      setError(caught instanceof Error ? caught.message : "Market data is currently unavailable.");
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Market data is currently unavailable."
+      );
     } finally {
       setLoading(false);
     }
@@ -221,9 +248,46 @@ export function MarketsPage() {
 
       {loading && <LoadingState label="Loading verified mandi records…" />}
       {error && (
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start">
-          <ErrorState title={error} />
-          <button type="button" onClick={() => void load()} className="min-h-11 rounded-xl border border-[#17834D] px-4 text-sm font-bold text-[#17834D]">Retry</button>
+        <div className="mb-6 rounded-2xl border border-[#f0dfb8] bg-[#fffaf0] p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#faecd0] text-[#9b741f]">
+              <ShoppingBasket className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-bold text-[#183b2b]">
+                Government AGMARKNET Provider Notice
+              </h3>
+              <p className="mt-1 text-xs leading-5 text-[#6c5825]">
+                {error}
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void load()}
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-[#17834D] px-3.5 text-xs font-bold text-white hover:bg-[#123D2B]"
+                >
+                  <RefreshCw className="size-3.5" /> Retry Mandi Fetch
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setState("");
+                    setDistrict("");
+                    void load(commodity, "", "");
+                  }}
+                  className="inline-flex min-h-9 items-center rounded-xl border border-[#d2b87f] bg-white px-3 text-xs font-semibold text-[#6c5825] hover:bg-[#fbf7ee]"
+                >
+                  Check All-India Mandis
+                </button>
+                <Link
+                  href="/crops"
+                  className="inline-flex min-h-9 items-center rounded-xl border border-[#dfe8e2] bg-white px-3 text-xs font-semibold text-[#486056] hover:bg-[#f2f6f3]"
+                >
+                  Browse Crop Guides →
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

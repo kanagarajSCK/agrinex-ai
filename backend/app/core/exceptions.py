@@ -20,8 +20,12 @@ class MarketApiKeyMissingError(AppError):
     status_code = 503
     code = "MARKET_API_KEY_MISSING"
 
-    def __init__(self) -> None:
-        self.public_message = "The data.gov.in API key is not configured."
+    def __init__(self, detail: str | None = None) -> None:
+        self.public_message = (
+            "The data.gov.in API key is not configured."
+            if not detail
+            else f"The data.gov.in API key is not configured: {detail}"
+        )
         super().__init__()
 
 
@@ -38,8 +42,12 @@ class ProviderError(AppError):
     status_code = 502
     code = "PROVIDER_ERROR"
 
-    def __init__(self, provider: str) -> None:
-        self.public_message = f"The {provider} provider request failed."
+    def __init__(self, provider: str, detail: str | None = None) -> None:
+        self.public_message = (
+            f"The {provider} provider request failed."
+            if not detail
+            else f"The {provider} provider request failed: {detail}"
+        )
         super().__init__()
 
 
