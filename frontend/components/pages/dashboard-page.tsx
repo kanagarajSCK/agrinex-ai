@@ -23,16 +23,18 @@ import { ChartCard, MetricCard, PageHeader, SectionTitle } from "@/components/ui
 import { fetchWeather, type WeatherData } from "@/lib/weather";
 import { fetchMarketPrices, type MarketPrice } from "@/lib/markets";
 import { useLocation } from "@/contexts/location-context";
-
-const quickActions = [
-  { href: "/assistant", label: "Ask AI", description: "Chat with agricultural AI", icon: Bot, tone: "bg-[#e6f4ea] text-[#17834D]" },
-  { href: "/weather", label: "Check weather", description: "View live forecast", icon: CloudSun, tone: "bg-[#e8f1fb] text-[#3774a6]" },
-  { href: "/markets", label: "Compare prices", description: "Genuine AGMARKNET prices", icon: ShoppingBasket, tone: "bg-[#fff4dd] text-[#9b741f]" },
-  { href: "/crops", label: "Crop guidance", description: "Browse crop profiles", icon: Sprout, tone: "bg-[#f0eafa] text-[#7252a3]" },
-];
+import { useLanguage } from "@/contexts/language-context";
 
 export function DashboardPage() {
   const { location, openOnboarding } = useLocation();
+  const { t } = useLanguage();
+
+  const quickActions = [
+    { href: "/assistant", label: t("askAi", "Ask AI"), description: t("askAiDesc", "Chat with agricultural AI"), icon: Bot, tone: "bg-[#e6f4ea] text-[#17834D]" },
+    { href: "/weather", label: t("checkWeather", "Check weather"), description: t("checkWeatherDesc", "View live forecast"), icon: CloudSun, tone: "bg-[#e8f1fb] text-[#3774a6]" },
+    { href: "/markets", label: t("comparePrices", "Compare prices"), description: t("comparePricesDesc", "Genuine AGMARKNET prices"), icon: ShoppingBasket, tone: "bg-[#fff4dd] text-[#9b741f]" },
+    { href: "/crops", label: t("cropGuidance", "Crop guidance"), description: t("cropGuidanceDesc", "Browse crop profiles"), icon: Sprout, tone: "bg-[#f0eafa] text-[#7252a3]" },
+  ];
 
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherError, setWeatherError] = useState("");
@@ -106,9 +108,12 @@ export function DashboardPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Your farm overview"
-        title="Good morning, farmer."
-        description={`A clear starting point for your farm decisions in ${formattedLocation}. Live weather and verified mandi prices are connected.`}
+        eyebrow={t("farmOverview", "Your farm overview")}
+        title={t("goodMorning", "Good morning, farmer.")}
+        description={t(
+          "dashboardDesc",
+          "Live weather, genuine mandi prices, and university crop intelligence for your farm."
+        )}
         action={
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <button
@@ -192,7 +197,7 @@ export function DashboardPage() {
       </section>
 
       <section aria-labelledby="quick-actions-title" className="mb-6">
-        <SectionTitle title="Quick actions" />
+        <SectionTitle title={t("quickActions", "Quick actions")} />
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {quickActions.map(({ href, label, description, icon: Icon, tone }) => (
             <Link key={href} href={href} className="group rounded-2xl border border-[#e0e9e3] bg-white p-4 shadow-[0_1px_2px_rgba(16,28,24,0.04)] transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17834D] sm:p-5">

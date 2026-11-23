@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/primitives";
 import { useLocation } from "@/contexts/location-context";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Farm {
   id: number;
@@ -181,6 +182,7 @@ function FarmDialog({
 
 export function FarmsPage() {
   const { location, openOnboarding } = useLocation();
+  const { t } = useLanguage();
   const [farms, setFarms] = useState(initialFarms);
   const [dialogFarm, setDialogFarm] = useState<Farm | null | undefined>(undefined);
 
@@ -196,8 +198,8 @@ export function FarmsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Farm workspace"
-        title="My farms"
+        eyebrow={t("workspace", "Farm workspace")}
+        title={t("farms", "My farms")}
         description="Manage farm plots and location details. Seamlessly prefill farm information using your verified agricultural location."
         action={
           <div className="flex flex-wrap items-center gap-2">

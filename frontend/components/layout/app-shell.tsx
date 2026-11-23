@@ -17,13 +17,9 @@ import {
   Sprout,
   X,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
-import {
-  getStoredLanguage,
-  languageLabels,
-  storeLanguage,
-  type AppLanguage,
-} from "@/lib/i18n";
+import { useState, type ReactNode } from "react";
+import { languageLabels, type AppLanguage } from "@/lib/i18n";
+import { LanguageProvider, useLanguage } from "@/contexts/language-context";
 import { LocationProvider } from "@/contexts/location-context";
 import { LocationOnboardingModal } from "@/components/location/location-onboarding-modal";
 import { GlobalLocationSelector } from "@/components/location/global-location-selector";
@@ -46,19 +42,6 @@ function MapPinIcon(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
-
-const navigation = [
-  { href: "/dashboard", label: "Overview", icon: House },
-  { href: "/assistant", label: "AI Assistant", icon: Bot },
-  { href: "/weather", label: "Weather intelligence", icon: CloudSun },
-  { href: "/markets", label: "Market intelligence", icon: ChartNoAxesCombined },
-  { href: "/crops", label: "Crop intelligence", icon: Sprout },
-  { href: "/farms", label: "My farms", icon: MapPinIcon },
-  { href: "/advisories", label: "Advisory history", icon: History },
-  { href: "/settings", label: "Profile & settings", icon: Settings },
-];
-
-const mobileNavigation = navigation.slice(0, 4);
 
 function NavigationLink({
   href,
@@ -111,25 +94,45 @@ function Brand() {
   );
 }
 
-function SystemStatusBadge({ compact = false }: { compact?: boolean }) {
+function SystemStatusBadge({
+  compact = false,
+  label,
+}: {
+  compact?: boolean;
+  label?: string;
+}) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-[#c4e3cb] bg-[#eef8f0] px-2.5 py-1 text-[10px] font-bold tracking-[0.08em] text-[#166534]">
       <span className="size-1.5 rounded-full bg-[#16a34a]" />
-      {compact ? "LIVE INTEGRATIONS" : "LIVE WEATHER, MARKETS & AI"}
+      {label ?? (compact ? "LIVE INTEGRATIONS" : "LIVE WEATHER, MARKETS & AI")}
     </span>
   );
 }
 
 function AppShellContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { language, setLanguage, t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [language, setLanguage] = useState<AppLanguage>(getStoredLanguage);
 
-  useEffect(() => {
-    document.documentElement.lang = language;
-  }, [language]);
+  const navigation = [
+    { href: "/dashboard", label: t("dashboard", "Overview"), icon: House },
+    { href: "/assistant", label: t("assistant", "AI Assistant"), icon: Bot },
+    { href: "/weather", label: t("weather", "Weather intelligence"), icon: CloudSun },
+    { href: "/markets", label: t("markets", "Market intelligence"), icon: ChartNoAxesCombined },
+    { href: "/crops", label: t("crops", "Crop intelligence"), icon: Sprout },
+    { href: "/farms", label: t("farms", "My farms"), icon: MapPinIcon },
+    { href: "/advisories", label: t("advisories", "Advisory history"), icon: History },
+    { href: "/settings", label: t("settings", "Profile & settings"), icon: Settings },
+  ];
+
+  const mobileNavigation = [
+    { href: "/dashboard", label: t("dashboard", "Overview"), icon: House },
+    { href: "/assistant", label: t("assistant", "AI Assistant"), icon: Bot },
+    { href: "/weather", label: t("weatherShort", "Weather"), icon: CloudSun },
+    { href: "/markets", label: t("marketsShort", "Markets"), icon: ChartNoAxesCombined },
+  ];
 
   const isActive = (href: string) =>
     pathname === href || (href === "/dashboard" && pathname === "/");
@@ -141,7 +144,7 @@ function AppShellContent({ children }: { children: ReactNode }) {
           <Brand />
         </div>
         <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.15em] text-[#83a993]">
-          Workspace
+          {t("workspace", "Workspace")}
         </p>
         <nav aria-label="Main navigation" className="space-y-1">
           {navigation.map((item) => (
@@ -155,10 +158,10 @@ function AppShellContent({ children }: { children: ReactNode }) {
         <div className="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4">
           <div className="mb-2 flex items-center gap-2 text-xs font-bold text-[#d3ebda]">
             <span className="size-2 rounded-full bg-[#A3E6B5]" />
-            Active Platform
+            {t("activePlatform", "Active Platform")}
           </div>
           <p className="text-xs leading-5 text-[#b9d1c2]">
-            Live Open-Meteo weather, AGMARKNET mandi prices, and Gemini AI connected.
+            {t("activePlatformDesc")}
           </p>
         </div>
       </aside>
@@ -189,9 +192,9 @@ function AppShellContent({ children }: { children: ReactNode }) {
             </div>
             <div className="hidden min-w-0 items-center gap-3 lg:flex">
               <p className="truncate text-sm font-semibold text-[#456052]">
-                Smarter Farming. Better Decisions.
+                {t("tagline", "Smarter Farming. Better Decisions.")}
               </p>
-              <SystemStatusBadge compact />
+              <SystemStatusBadge compact label={t("liveBadge")} />
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2">
@@ -206,17 +209,15 @@ function AppShellContent({ children }: { children: ReactNode }) {
                   aria-hidden="true"
                   className="size-4 text-[#17834D]"
                 />
-                <span className="sr-only">Language</span>
+                <span className="sr-only">{t("language", "Language")}</span>
                 <select
-                  aria-label="Language"
+                  aria-label={t("language", "Language")}
                   value={language}
                   onChange={(event) => {
                     const nextLanguage = event.target.value as AppLanguage;
                     setLanguage(nextLanguage);
-                    storeLanguage(nextLanguage);
-                    document.documentElement.lang = nextLanguage;
                   }}
-                  className="max-w-24 bg-transparent font-semibold outline-none"
+                  className="max-w-28 bg-transparent font-semibold outline-none cursor-pointer"
                 >
                   <option value="en">{languageLabels.en}</option>
                   <option value="ta">{languageLabels.ta}</option>
@@ -229,7 +230,7 @@ function AppShellContent({ children }: { children: ReactNode }) {
               <div className="relative">
                 <button
                   type="button"
-                  aria-label="Notifications"
+                  aria-label={t("notifications", "Notifications")}
                   aria-expanded={notificationsOpen}
                   onClick={() => {
                     setNotificationsOpen((open) => !open);
@@ -242,10 +243,10 @@ function AppShellContent({ children }: { children: ReactNode }) {
                 {notificationsOpen && (
                   <div className="absolute right-0 top-12 z-40 w-64 rounded-2xl border border-[#e0e9e3] bg-white p-4 shadow-xl">
                     <p className="text-sm font-bold text-[#173c2b]">
-                      Notifications
+                      {t("notifications", "Notifications")}
                     </p>
                     <p className="mt-2 text-xs leading-5 text-[#61746a]">
-                      No live alerts are connected. This preview has no notifications.
+                      {t("noNotifications")}
                     </p>
                   </div>
                 )}
@@ -267,7 +268,7 @@ function AppShellContent({ children }: { children: ReactNode }) {
                     DE
                   </span>
                   <span className="hidden text-xs font-semibold text-[#355141] xl:block">
-                    Farmer Session
+                    {t("farmerSession", "Farmer Session")}
                   </span>
                   <ChevronDown
                     aria-hidden="true"
@@ -281,17 +282,17 @@ function AppShellContent({ children }: { children: ReactNode }) {
                       href="/settings"
                       className="block rounded-lg px-3 py-2 text-sm text-[#355141] hover:bg-[#f2f5f3]"
                     >
-                      Profile & settings
+                      {t("settings", "Profile & settings")}
                     </Link>
                     <Link
                       onClick={() => setProfileOpen(false)}
                       href="/farms"
                       className="block rounded-lg px-3 py-2 text-sm text-[#355141] hover:bg-[#f2f5f3]"
                     >
-                      My farms
+                      {t("farms", "My farms")}
                     </Link>
                     <p className="px-3 py-1 text-[10px] text-[#809087]">
-                      LOCAL BROWSER SESSION · NO LOGIN
+                      {t("noLogin")}
                     </p>
                   </div>
                 )}
@@ -307,15 +308,13 @@ function AppShellContent({ children }: { children: ReactNode }) {
             <label className="flex items-center gap-1 text-xs font-semibold text-[#486056]">
               <Languages aria-hidden="true" className="size-3.5 text-[#17834D]" />
               <select
-                aria-label="Language"
+                aria-label={t("language", "Language")}
                 value={language}
                 onChange={(event) => {
                   const nextLanguage = event.target.value as AppLanguage;
                   setLanguage(nextLanguage);
-                  storeLanguage(nextLanguage);
-                  document.documentElement.lang = nextLanguage;
                 }}
-                className="max-w-20 bg-transparent outline-none text-xs"
+                className="max-w-24 bg-transparent outline-none text-xs cursor-pointer font-semibold"
               >
                 <option value="en">{languageLabels.en}</option>
                 <option value="ta">{languageLabels.ta}</option>
@@ -323,7 +322,7 @@ function AppShellContent({ children }: { children: ReactNode }) {
                 <option value="hi">{languageLabels.hi}</option>
               </select>
             </label>
-            <SystemStatusBadge compact />
+            <SystemStatusBadge compact label={t("liveBadge")} />
           </div>
 
           <nav
@@ -379,7 +378,7 @@ function AppShellContent({ children }: { children: ReactNode }) {
                 ))}
               </nav>
               <div className="mt-7">
-                <SystemStatusBadge />
+                <SystemStatusBadge label={t("liveBadgeFull")} />
               </div>
             </div>
           </div>
@@ -388,7 +387,7 @@ function AppShellContent({ children }: { children: ReactNode }) {
         <main className="mx-auto min-h-[calc(100vh-68px)] w-full max-w-[1600px] px-4 pb-28 pt-5 sm:px-6 sm:pt-7 md:pb-10 lg:px-8 xl:px-10">
           {children}
           <footer className="mt-9 border-t border-[#e0e9e3] py-5 text-center text-[11px] leading-5 text-[#738279]">
-            AgriNex AI · Live Open-Meteo weather, AGMARKNET mandi prices and Gemini AI connected. Crop profiles and farm plans are local previews.
+            {t("footerText")}
           </footer>
         </main>
       </div>
@@ -408,11 +407,7 @@ function AppShellContent({ children }: { children: ReactNode }) {
           >
             <Icon aria-hidden="true" className="size-[19px]" />
             <span className="max-w-full truncate px-1">
-              {label === "Weather intelligence"
-                ? "Weather"
-                : label === "Market intelligence"
-                ? "Markets"
-                : label}
+              {label}
             </span>
           </Link>
         ))}
@@ -423,9 +418,11 @@ function AppShellContent({ children }: { children: ReactNode }) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <LocationProvider>
-      <AppShellContent>{children}</AppShellContent>
-      <LocationOnboardingModal />
-    </LocationProvider>
+    <LanguageProvider>
+      <LocationProvider>
+        <AppShellContent>{children}</AppShellContent>
+        <LocationOnboardingModal />
+      </LocationProvider>
+    </LanguageProvider>
   );
 }

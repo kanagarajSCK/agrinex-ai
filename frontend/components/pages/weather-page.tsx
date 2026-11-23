@@ -21,9 +21,11 @@ import {
   type WeatherData,
 } from "@/lib/weather";
 import { useLocation } from "@/contexts/location-context";
+import { useLanguage } from "@/contexts/language-context";
 
 export function WeatherPage() {
   const { location, openOnboarding } = useLocation();
+  const { t } = useLanguage();
 
   const activeLat = location?.latitude ?? 11.6643;
   const activeLon = location?.longitude ?? 78.146;
@@ -101,8 +103,8 @@ export function WeatherPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Weather intelligence"
-        title="Weather for your farm"
+        eyebrow={t("weatherEyebrow", "Weather intelligence")}
+        title={t("weatherTitle", "Weather for your farm")}
         description={`Live 7-day weather forecast from Open-Meteo for ${currentCoords.label}.`}
         action={
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">

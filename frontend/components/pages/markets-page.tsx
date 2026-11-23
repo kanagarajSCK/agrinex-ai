@@ -16,6 +16,7 @@ import {
   type MarketSearchResponse,
 } from "@/lib/markets";
 import { useLocation } from "@/contexts/location-context";
+import { useLanguage } from "@/contexts/language-context";
 
 function asNumber(value: number | string | null | undefined) {
   if (value == null) return null;
@@ -25,6 +26,7 @@ function asNumber(value: number | string | null | undefined) {
 
 export function MarketsPage() {
   const { location, openOnboarding } = useLocation();
+  const { t } = useLanguage();
 
   const [state, setState] = useState(() => location?.state || "Tamil Nadu");
   const [district, setDistrict] = useState(() => location?.district || "Salem");
@@ -129,8 +131,8 @@ export function MarketsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Market intelligence"
-        title="Compare mandi prices"
+        eyebrow={t("marketsEyebrow", "Market intelligence")}
+        title={t("marketsTitle", "Compare mandi prices")}
         description={`Genuine AGMARKNET / data.gov.in records for ${district || state}. A configured API key is required; no estimated or sample market prices are shown.`}
         action={
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">

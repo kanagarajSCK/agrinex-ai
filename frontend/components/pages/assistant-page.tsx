@@ -15,11 +15,10 @@ import {
 } from "@/lib/assistant";
 import { saveAdvisoryFromChat } from "@/lib/advisories";
 import {
-  getStoredLanguage,
   languageLabels,
-  storeLanguage,
   type AppLanguage,
 } from "@/lib/i18n";
+import { useLanguage } from "@/contexts/language-context";
 import { useLocation } from "@/contexts/location-context";
 
 const suggestedQuestions: Record<AssistantLanguage, string[]> = {
@@ -48,8 +47,8 @@ type DisplayMessage =
 
 export function AssistantPage() {
   const { location: confirmedLocation, openOnboarding } = useLocation();
+  const { language, setLanguage, t } = useLanguage();
 
-  const [language, setLanguage] = useState<AssistantLanguage>(getStoredLanguage);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -125,9 +124,12 @@ export function AssistantPage() {
   return (
     <>
       <PageHeader
-        eyebrow="AgriNex assistant"
-        title="Ask a farming question"
-        description="Gemini-powered assistance with verified weather and mandi tools. General agricultural guidance is not a diagnosis or a guaranteed recommendation."
+        eyebrow={t("assistantEyebrow", "Intelligent farming advisory")}
+        title={t("assistantTitle", "Agricultural AI Assistant")}
+        description={t(
+          "assistantDesc",
+          "Ask questions in English, Tamil, Telugu, or Hindi. Get answers backed by verified weather, mandi prices, and agronomic science."
+        )}
         action={
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -139,16 +141,15 @@ export function AssistantPage() {
               <span className="max-w-[150px] truncate">{activeLocation.city}</span>
             </button>
             <label className="flex items-center gap-2 text-xs font-semibold text-[#66776d]">
-              <span>Language</span>
+              <span>{t("language", "Language")}</span>
               <select
-                aria-label="Assistant language"
+                aria-label={t("language", "Assistant language")}
                 value={language}
                 onChange={(event) => {
                   const nextLanguage = event.target.value as AppLanguage;
                   setLanguage(nextLanguage);
-                  storeLanguage(nextLanguage);
                 }}
-                className="min-h-11 rounded-xl border border-[#dfe8e2] bg-white px-3 text-sm text-[#365344] outline-none focus:border-[#17834D]"
+                className="min-h-11 rounded-xl border border-[#dfe8e2] bg-white px-3 text-sm text-[#365344] outline-none focus:border-[#17834D] cursor-pointer"
               >
                 <option value="en">{languageLabels.en}</option>
                 <option value="ta">{languageLabels.ta}</option>
@@ -180,7 +181,7 @@ export function AssistantPage() {
               disabled={!messages.length}
               className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-[#e0e9e3] px-3 text-xs font-bold text-[#587064] disabled:opacity-40"
             >
-              <Trash2 aria-hidden="true" className="size-3.5" />Clear
+              <Trash2 aria-hidden="true" className="size-3.5" />{t("clearChatBtn", "Clear")}
             </button>
           </div>
 
@@ -263,11 +264,11 @@ export function AssistantPage() {
                 }}
                 rows={1}
                 maxLength={2000}
-                placeholder="Ask a farming question"
+                placeholder={t("askPlaceholder", "Ask a farming question")}
                 className="max-h-28 min-h-10 min-w-0 flex-1 resize-y bg-transparent px-2 py-2 text-sm leading-5 text-[#20372b] outline-none placeholder:text-[#97a39c]"
               />
               <button type="button" disabled title="Voice input is not available in this phase" aria-label="Voice input unavailable" className="grid size-10 shrink-0 cursor-not-allowed place-items-center rounded-xl text-[#a2aca6]"><Mic aria-hidden="true" className="size-[18px]" /></button>
-              <Button type="submit" disabled={!draft.trim() || loading} aria-label="Send question" className="size-10 shrink-0 rounded-xl p-0"><Send aria-hidden="true" className="size-4" /></Button>
+              <Button type="submit" disabled={!draft.trim() || loading} aria-label={t("sendBtn", "Send question")} className="size-10 shrink-0 rounded-xl p-0"><Send aria-hidden="true" className="size-4" /></Button>
             </div>
             <p className="mt-2 px-1 text-[10px] leading-4 text-[#849188]">Voice input is unavailable. Conversation is not permanently stored.</p>
           </form>

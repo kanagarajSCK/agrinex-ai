@@ -21,6 +21,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { PageHeader, SearchInput } from "@/components/ui/primitives";
 import { useLocation } from "@/contexts/location-context";
+import { useLanguage } from "@/contexts/language-context";
 import {
   CROP_CATEGORIES,
   CROPS_DATA,
@@ -38,6 +39,7 @@ type DetailTab =
 
 export function CropsPage() {
   const { location, openOnboarding } = useLocation();
+  const { t } = useLanguage();
 
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<CropCategory>("All crops");
@@ -71,9 +73,12 @@ export function CropsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Crop intelligence"
-        title="Crop Production & Agronomic Intelligence"
-        description="Evidence-based crop production guides, nutrient schedules, irrigation requirements, and integrated pest management verified against TNAU and ICAR agricultural university standards."
+        eyebrow={t("cropGuidanceEyebrow", "University-verified agronomy")}
+        title={t("cropGuidanceTitle", "Crop Production & Agronomic Intelligence")}
+        description={t(
+          "cropGuidanceSubtitle",
+          "Evidence-based crop production guides, nutrient schedules, irrigation requirements, and integrated pest management verified against TNAU and ICAR agricultural university standards."
+        )}
         badge={
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e6f4ea] px-3 py-1 text-xs font-bold text-[#15803d]">
             <CheckCircle2 className="size-3.5" /> University-Verified Agronomy
@@ -120,7 +125,7 @@ export function CropsPage() {
         <SearchInput
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search by crop name (e.g. Rice, Nel, Tomato, Groundnut, Cotton, Turmeric)…"
+          placeholder={t("searchCropsPlaceholder", "Search by crop name (e.g. Rice, Tomato, Groundnut)…")}
           aria-label="Search crops"
         />
 

@@ -27,6 +27,7 @@ import {
   type AdvisoryItem,
 } from "@/lib/advisories";
 import { useLocation } from "@/contexts/location-context";
+import { useLanguage } from "@/contexts/language-context";
 
 const categories: AdvisoryCategory[] = [
   "All",
@@ -70,6 +71,7 @@ const initialAdvisories = getContextualAdvisories();
 
 export function AdvisoriesPage() {
   const { location, openOnboarding } = useLocation();
+  const { t } = useLanguage();
 
   const [filter, setFilter] = useState<AdvisoryCategory>("All");
   const [query, setQuery] = useState("");
@@ -128,8 +130,8 @@ export function AdvisoriesPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Your farm intelligence library"
-        title="Advisory history"
+        eyebrow={t("advisoriesEyebrow", "Your farm intelligence library")}
+        title={t("advisoriesTitle", "Advisory history")}
         description={`Search past agricultural consultations, real-time field weather alerts, and verified AGMARKNET mandi guidance for ${locationLabel}.`}
         action={
           <div className="flex flex-wrap items-center gap-2">
