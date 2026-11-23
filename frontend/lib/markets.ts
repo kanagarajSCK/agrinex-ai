@@ -45,10 +45,14 @@ export type MarketSummary = {
   stale: boolean;
 };
 
+export const DEFAULT_BACKEND_URL = "https://agrinex-backend-c4w8.onrender.com";
+
 const baseUrl = () =>
   process.env.NEXT_PUBLIC_AGRINEX_API_URL?.replace(/\/$/, "") ||
-  (typeof window !== "undefined" && window.location.hostname === "localhost"
-    ? "http://localhost:8000"
+  (typeof window !== "undefined"
+    ? (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+        ? "http://localhost:8000"
+        : DEFAULT_BACKEND_URL)
     : "http://127.0.0.1:8000");
 
 async function getJson<T>(path: string): Promise<T> {

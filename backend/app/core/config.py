@@ -20,6 +20,8 @@ class Settings(BaseSettings):
             "http://127.0.0.1:3000",
             "http://localhost:3001",
             "http://127.0.0.1:3001",
+            "https://agrinex-ai-xi.vercel.app",
+            "https://agrinex-ai.vercel.app",
         ]
     )
     provider_timeout_seconds: float = Field(default=12.0, gt=0, le=60, allow_inf_nan=False)

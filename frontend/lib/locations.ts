@@ -116,15 +116,61 @@ export function getSuggestedLocation(): ConfirmedLocation {
   };
 }
 
+export const DEFAULT_BACKEND_URL = "https://agrinex-backend-c4w8.onrender.com";
+
 const baseUrl = () => {
   if (process.env.NEXT_PUBLIC_AGRINEX_API_URL) {
     return process.env.NEXT_PUBLIC_AGRINEX_API_URL.replace(/\/$/, "");
   }
-  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-    return "http://localhost:8000";
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      return "http://localhost:8000";
+    }
+    // Remote / deployed production host fallback (e.g. Vercel)
+    return DEFAULT_BACKEND_URL;
   }
   return "http://127.0.0.1:8000";
 };
+
+export const STATIC_INDIAN_STATES: LocationRecord[] = [
+  { location_id: "lgd:state:35", state_code: "35", name_en: "Andaman And Nicobar Islands", entity_type: "union_territory", source: "LGD", active: true },
+  { location_id: "lgd:state:28", state_code: "28", name_en: "Andhra Pradesh", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:12", state_code: "12", name_en: "Arunachal Pradesh", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:18", state_code: "18", name_en: "Assam", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:10", state_code: "10", name_en: "Bihar", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:4", state_code: "4", name_en: "Chandigarh", entity_type: "union_territory", source: "LGD", active: true },
+  { location_id: "lgd:state:22", state_code: "22", name_en: "Chhattisgarh", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:7", state_code: "7", name_en: "Delhi", entity_type: "union_territory", source: "LGD", active: true },
+  { location_id: "lgd:state:30", state_code: "30", name_en: "Goa", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:24", state_code: "24", name_en: "Gujarat", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:6", state_code: "6", name_en: "Haryana", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:2", state_code: "2", name_en: "Himachal Pradesh", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:1", state_code: "1", name_en: "Jammu And Kashmir", entity_type: "union_territory", source: "LGD", active: true },
+  { location_id: "lgd:state:20", state_code: "20", name_en: "Jharkhand", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:29", state_code: "29", name_en: "Karnataka", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:32", state_code: "32", name_en: "Kerala", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:37", state_code: "37", name_en: "Ladakh", entity_type: "union_territory", source: "LGD", active: true },
+  { location_id: "lgd:state:31", state_code: "31", name_en: "Lakshadweep", entity_type: "union_territory", source: "LGD", active: true },
+  { location_id: "lgd:state:23", state_code: "23", name_en: "Madhya Pradesh", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:27", state_code: "27", name_en: "Maharashtra", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:14", state_code: "14", name_en: "Manipur", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:17", state_code: "17", name_en: "Meghalaya", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:15", state_code: "15", name_en: "Mizoram", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:13", state_code: "13", name_en: "Nagaland", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:21", state_code: "21", name_en: "Odisha", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:34", state_code: "34", name_en: "Puducherry", entity_type: "union_territory", source: "LGD", active: true },
+  { location_id: "lgd:state:3", state_code: "3", name_en: "Punjab", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:8", state_code: "8", name_en: "Rajasthan", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:11", state_code: "11", name_en: "Sikkim", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:33", state_code: "33", name_en: "Tamil Nadu", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:36", state_code: "36", name_en: "Telangana", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:38", state_code: "38", name_en: "The Dadra And Nagar Haveli And Daman And Diu", entity_type: "union_territory", source: "LGD", active: true },
+  { location_id: "lgd:state:16", state_code: "16", name_en: "Tripura", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:9", state_code: "9", name_en: "Uttar Pradesh", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:5", state_code: "5", name_en: "Uttarakhand", entity_type: "state", source: "LGD", active: true },
+  { location_id: "lgd:state:19", state_code: "19", name_en: "West Bengal", entity_type: "state", source: "LGD", active: true },
+];
 
 async function getLocationList(path: string): Promise<LocationList> {
   const targetUrl = `${baseUrl()}${path}`;
@@ -142,7 +188,22 @@ async function getLocationList(path: string): Promise<LocationList> {
   }
 }
 
-export const fetchStates = () => getLocationList("/api/v1/locations/states");
+export const fetchStates = async (): Promise<LocationList> => {
+  try {
+    const remote = await getLocationList("/api/v1/locations/states");
+    if (remote.records && remote.records.length > 0) {
+      return remote;
+    }
+  } catch {
+    // If backend is waking up or network latency, use embedded verified states
+  }
+  return {
+    records: STATIC_INDIAN_STATES,
+    snapshot_id: "lgd-verified-states-bundle",
+    source_update_date: "2024-10-07",
+    count: STATIC_INDIAN_STATES.length,
+  };
+};
 
 export const fetchDistricts = (stateCode: string) =>
   getLocationList(`/api/v1/locations/districts?state_code=${encodeURIComponent(stateCode)}`);

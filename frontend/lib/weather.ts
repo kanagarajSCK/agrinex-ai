@@ -64,6 +64,8 @@ export const SALEM_LOCATION: WeatherLocation = {
   label: "Salem, Tamil Nadu",
 };
 
+export const DEFAULT_BACKEND_URL = "https://agrinex-backend-c4w8.onrender.com";
+
 export async function fetchWeather(
   latitude: number,
   longitude: number,
@@ -71,8 +73,10 @@ export async function fetchWeather(
 ): Promise<WeatherData> {
   const baseUrl =
     process.env.NEXT_PUBLIC_AGRINEX_API_URL?.replace(/\/$/, "") ||
-    (typeof window !== "undefined" && window.location.hostname === "localhost"
-      ? "http://localhost:8000"
+    (typeof window !== "undefined"
+      ? (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+          ? "http://localhost:8000"
+          : DEFAULT_BACKEND_URL)
       : "http://127.0.0.1:8000");
   const targetUrl = `${baseUrl}/api/v1/weather/forecast?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&days=${days}`;
   let response: Response;

@@ -27,7 +27,6 @@ import {
 export function LocationOnboardingModal() {
   const {
     status,
-    location,
     detectedPending,
     isOnboardingOpen,
     onboardingInitialTab,
@@ -67,6 +66,18 @@ export function LocationOnboardingModal() {
     }
   }, [isOnboardingOpen, onboardingInitialTab]);
 
+  // Handle closing modal via Escape key
+  useEffect(() => {
+    if (!isOnboardingOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeOnboarding();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOnboardingOpen, closeOnboarding]);
+
   // Load official states when modal opens or when Manual tab is active
   useEffect(() => {
     if (!isOnboardingOpen) return;
@@ -103,8 +114,20 @@ export function LocationOnboardingModal() {
     if (st?.state_code) {
       setLoadingHierarchy(true);
       void fetchDistricts(st.state_code)
-        .then((res) => setDistricts(res.records))
-        .catch(() => setDistricts([]))
+        .then((res) => {
+          setDistricts(res.records);
+          if (res.records.length === 0) {
+            setManualError("No districts found for this state in the current snapshot.");
+          }
+        })
+        .catch((err) => {
+          setDistricts([]);
+          setManualError(
+            err instanceof Error
+              ? `Unable to load districts: ${err.message}. Please retry.`
+              : "Unable to load districts. Please retry."
+          );
+        })
         .finally(() => setLoadingHierarchy(false));
     }
   };
@@ -217,6 +240,7 @@ export function LocationOnboardingModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="location-onboarding-title"
+      onClick={closeOnboarding}
       className="fixed inset-0 z-50 flex items-end justify-center bg-[#101c18]/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
     >
       <div
@@ -245,16 +269,15 @@ export function LocationOnboardingModal() {
                 Select your location to get accurate local weather, mandi prices and agricultural recommendations.
               </p>
             </div>
-            {location && (
-              <button
-                type="button"
-                onClick={closeOnboarding}
-                aria-label="Close dialog"
-                className="grid size-9 shrink-0 place-items-center rounded-xl text-[#546b5e] hover:bg-[#eaf1ec] hover:text-[#123D2B]"
-              >
-                <X className="size-5" />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={closeOnboarding}
+              aria-label="Close location setup dialog"
+              title="Close"
+              className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#dfe8e1] bg-white text-[#546b5e] shadow-sm transition hover:border-[#b8d1c1] hover:bg-[#eaf1ec] hover:text-[#123D2B] focus:outline-none focus:ring-2 focus:ring-[#17834D]"
+            >
+              <X className="size-5" />
+            </button>
           </div>
 
           {/* Action Tabs */}
@@ -510,24 +533,35 @@ export function LocationOnboardingModal() {
                 </label>
 
                 {/* 3. District */}
-                <label className="block text-xs font-bold text-[#355141]">
-                  District *
-                  <select
-                    disabled={!selectedState || loadingHierarchy}
-                    value={selectedDistrict?.location_id || ""}
-                    onChange={(e) => handleSelectDistrict(e.target.value)}
-                    className="mt-1.5 min-h-11 w-full rounded-xl border border-[#dfe8e2] bg-white px-3 text-xs font-medium text-[#183b2b] outline-none focus:border-[#17834D] focus:ring-1 focus:ring-[#17834D] disabled:bg-[#f7f9f7] disabled:text-[#9ca3af]"
-                  >
-                    <option value="">
-                      {loadingHierarchy ? "Loading districts…" : "Select District"}
-                    </option>
-                    {districts.map((d) => (
-                      <option key={d.location_id} value={d.location_id}>
-                        {d.name_en} {d.name_local ? `(${d.name_local})` : ""}
+                <div>
+                  <label className="block text-xs font-bold text-[#355141]">
+                    District *
+                    <select
+                      disabled={!selectedState || loadingHierarchy}
+                      value={selectedDistrict?.location_id || ""}
+                      onChange={(e) => handleSelectDistrict(e.target.value)}
+                      className="mt-1.5 min-h-11 w-full rounded-xl border border-[#dfe8e2] bg-white px-3 text-xs font-medium text-[#183b2b] outline-none focus:border-[#17834D] focus:ring-1 focus:ring-[#17834D] disabled:bg-[#f7f9f7] disabled:text-[#9ca3af]"
+                    >
+                      <option value="">
+                        {loadingHierarchy ? "Loading districts…" : "Select District"}
                       </option>
-                    ))}
-                  </select>
-                </label>
+                      {districts.map((d) => (
+                        <option key={d.location_id} value={d.location_id}>
+                          {d.name_en} {d.name_local ? `(${d.name_local})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {selectedState && !districts.length && !loadingHierarchy && (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectState(selectedState.location_id)}
+                      className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold text-[#17834D] hover:underline"
+                    >
+                      <RefreshCw className="size-3" /> Retry loading districts
+                    </button>
+                  )}
+                </div>
 
                 {/* 4. Sub-district / Taluk */}
                 <label className="block text-xs font-bold text-[#355141]">

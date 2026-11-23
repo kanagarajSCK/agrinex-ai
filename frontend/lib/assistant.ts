@@ -35,12 +35,18 @@ export type ChatHistoryMessage = {
   content: string;
 };
 
+export const DEFAULT_BACKEND_URL = "https://agrinex-backend-c4w8.onrender.com";
+
 const baseUrl = () => {
   if (process.env.NEXT_PUBLIC_AGRINEX_API_URL) {
     return process.env.NEXT_PUBLIC_AGRINEX_API_URL.replace(/\/$/, "");
   }
-  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-    return "http://localhost:8000";
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      return "http://localhost:8000";
+    }
+    return DEFAULT_BACKEND_URL;
   }
   return "http://127.0.0.1:8000";
 };
