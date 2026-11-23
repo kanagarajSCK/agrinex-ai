@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Bot, CheckCircle2, CircleHelp, Leaf, MapPin, Mic, Send, Sparkles, Trash2 } from "lucide-react";
+import { Bot, CheckCircle2, CircleHelp, Leaf, MapPin, Mic, Send, Sparkles, Square, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
@@ -18,6 +18,13 @@ import {
   languageLabels,
   type AppLanguage,
 } from "@/lib/i18n";
+import {
+  SPEECH_LOCALES,
+  getSpeechRecognitionConstructor,
+  type BrowserSpeechRecognition,
+  type SpeechRecognitionErrorEvent,
+  type SpeechRecognitionEvent,
+} from "@/lib/speech";
 import { useLanguage } from "@/contexts/language-context";
 import { useLocation } from "@/contexts/location-context";
 
@@ -54,6 +61,95 @@ export function AssistantPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState("");
+  const [speechSupported, setSpeechSupported] = useState(true);
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const baseTextRef = useRef("");
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {
+          // ignore cleanup abort
+        }
+      }
+    };
+  }, []);
+
+  function toggleListening() {
+    setSpeechError("");
+
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // ignore stop error
+        }
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechConstructor = getSpeechRecognitionConstructor();
+    if (!SpeechConstructor) {
+      setSpeechSupported(false);
+      setSpeechError("Speech recognition is not supported in this browser. Please use Google Chrome, Edge, Safari, or an Android browser.");
+      return;
+    }
+
+    try {
+      const recognition = new SpeechConstructor();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = SPEECH_LOCALES[language] || "en-IN";
+
+      baseTextRef.current = draft.trim();
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setSpeechError("");
+      };
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        let transcript = "";
+        for (let i = 0; i < event.results.length; ++i) {
+          transcript += event.results[i][0].transcript;
+        }
+        if (baseTextRef.current) {
+          setDraft(`${baseTextRef.current} ${transcript}`);
+        } else {
+          setDraft(transcript);
+        }
+      };
+
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        if (event.error === "no-speech") {
+          return;
+        }
+        if (event.error === "not-allowed") {
+          setSpeechError("Microphone permission was denied. Please allow microphone access in your browser to speak.");
+        } else {
+          setSpeechError(`Voice input: ${event.error}`);
+        }
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      setSpeechError(err instanceof Error ? err.message : "Failed to start speech recognition.");
+      setIsListening(false);
+    }
+  }
+
   const activeLocation = confirmedLocation
     ? {
         latitude: confirmedLocation.latitude,
@@ -77,6 +173,14 @@ export function AssistantPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isListening && recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // ignore
+      }
+      setIsListening(false);
+    }
     const message = draft.trim();
     if (!message || loading) return;
 
@@ -267,10 +371,58 @@ export function AssistantPage() {
                 placeholder={t("askPlaceholder", "Ask a farming question")}
                 className="max-h-28 min-h-10 min-w-0 flex-1 resize-y bg-transparent px-2 py-2 text-sm leading-5 text-[#20372b] outline-none placeholder:text-[#97a39c]"
               />
-              <button type="button" disabled title="Voice input is not available in this phase" aria-label="Voice input unavailable" className="grid size-10 shrink-0 cursor-not-allowed place-items-center rounded-xl text-[#a2aca6]"><Mic aria-hidden="true" className="size-[18px]" /></button>
+              <button
+                type="button"
+                onClick={toggleListening}
+                title={
+                  !speechSupported
+                    ? "Voice input is not supported in this browser"
+                    : isListening
+                    ? `Listening in ${languageLabels[language]}… Click to stop`
+                    : `Click to speak (${languageLabels[language]})`
+                }
+                aria-label={
+                  isListening
+                    ? "Stop voice input"
+                    : `Start voice input in ${languageLabels[language]}`
+                }
+                className={`grid size-10 shrink-0 place-items-center rounded-xl transition-all ${
+                  isListening
+                    ? "bg-[#dc2626] text-white shadow-md animate-pulse ring-2 ring-red-400"
+                    : "text-[#42604f] hover:bg-[#eaf4ec] hover:text-[#17834D]"
+                }`}
+              >
+                {isListening ? (
+                  <Square aria-hidden="true" className="size-4 fill-white" />
+                ) : (
+                  <Mic aria-hidden="true" className="size-[18px]" />
+                )}
+              </button>
               <Button type="submit" disabled={!draft.trim() || loading} aria-label={t("sendBtn", "Send question")} className="size-10 shrink-0 rounded-xl p-0"><Send aria-hidden="true" className="size-4" /></Button>
             </div>
-            <p className="mt-2 px-1 text-[10px] leading-4 text-[#849188]">Voice input is unavailable. Conversation is not permanently stored.</p>
+            {isListening ? (
+              <div className="mt-2 flex items-center justify-between px-1 text-xs font-semibold text-[#dc2626] animate-pulse">
+                <span className="flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-[#dc2626] animate-ping" />
+                  Listening in {languageLabels[language]}… Speak your farming question now
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  className="text-[11px] font-bold underline hover:text-[#991b1b]"
+                >
+                  Stop
+                </button>
+              </div>
+            ) : speechError ? (
+              <p className="mt-2 px-1 text-[11px] font-medium text-[#b91c1c]">
+                {speechError}
+              </p>
+            ) : (
+              <p className="mt-2 px-1 text-[10px] leading-4 text-[#849188]">
+                Click the microphone to speak in {languageLabels[language]}. Supported in Chrome, Edge, Safari and Android.
+              </p>
+            )}
           </form>
         </Card>
 
